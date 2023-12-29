@@ -23,7 +23,6 @@ template <int N, typename T_SampleType> struct FIR
 
 template <typename T_SampleType> class ConvertPCM16Data
 {
-
 public:
 	uint64_t GetOutSize() const { return outSize; }
 
@@ -73,7 +72,6 @@ protected:
 		if (outSamples) delete outSamples;
 		if (convertSamples) delete convertSamples;
 	}
-
 
 	int16_t* convertwithfir()
 	{
@@ -136,7 +134,7 @@ protected:
 template <> class ConvertPCM16<uint8_t> : public ConvertPCM16Data<uint8_t>
 {
 public:
-	ConvertPCM16() = default;
+	ConvertPCM16() = delete;
 	ConvertPCM16(bool _usefir, 
 		std::vector<float> coef,
 		uint64_t inSize,
@@ -165,7 +163,7 @@ protected:
 template <> class ConvertPCM16<int16_t> : public ConvertPCM16Data<int16_t>
 {
 public:
-	ConvertPCM16() = default;
+	ConvertPCM16() = delete;
 	ConvertPCM16(bool _usefir,
 		std::vector<float> coef,
 		uint64_t inSize,
@@ -199,15 +197,13 @@ protected:
 template <> class ConvertPCM16<int32_t> : public ConvertPCM16Data<int32_t>
 {
 public:
-	ConvertPCM16() = default;
+	ConvertPCM16() = delete;
 	ConvertPCM16(bool _usefir,
 		std::vector<float> coef,
 		uint32_t inSize,
 		uint8_t* samples) : ConvertPCM16Data(_usefir, inSize, samples, 4, inSize >> 2, coef) {}
 
 	~ConvertPCM16() = default;
-
-
 
 protected:
 
