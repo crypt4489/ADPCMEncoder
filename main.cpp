@@ -344,19 +344,19 @@ int main(int argc, char **argv)
 {
 	int size = 0;
 	int sampleRate = 0;
-	WavFile* file = LoadWavFile(".\\wowow.wav");
+	WavFile* file = LoadWavFile(".\\tone_c.wav");
 	u8* rawsamples = file->samples;//LoadLmpFile(".\\test2.lmp", &size, &sampleRate);
 	
 	sampleRate = file->header.sample_rate;
 	std::cout << file->header.num_channels << " " << file->header.bits_per_sample << " " << file->header.data_length << std::endl;
 	s16* samples; // = new s16[shortSize];
 
-	std::vector<float> coef = { .15f, .25f, .15f, .15f };
+	std::vector<float> coef = { .15f, .15f, .15f, .15f };
 	
-	//ConvertPCM16<int16_t> *conversion = new (std::nothrow) ConvertPCM16<int16_t>(false, coef, file->header.data_length, rawsamples);
+	ConvertPCM16<int16_t> *conversion = new (std::nothrow) ConvertPCM16<int16_t>(false, coef, file->header.data_length, rawsamples);
 
 	//ConvertPCM16<uint8_t>* conversion = new (std::nothrow) ConvertPCM16<uint8_t>(true, coef, file->header.data_length, rawsamples);
-	ConvertPCM16<int32_t>* conversion = new (std::nothrow) ConvertPCM16<int32_t>(false, coef, file->header.data_length, rawsamples);
+	//ConvertPCM16<int32_t>* conversion = new (std::nothrow) ConvertPCM16<int32_t>(false, coef, file->header.data_length, rawsamples);
 	if (conversion == nullptr)
 	{
 		free(file);
@@ -390,7 +390,7 @@ int main(int argc, char **argv)
 
 	u8* encoded = CreateVagSamples(samples, shortSize, &outsize, 0, 0, 0);
 
-	std::ofstream outFile(".\\dude2.vag", std::ios::binary);
+	std::ofstream outFile(".\\dude4.vag", std::ios::binary);
 
 	VagFileHeader header{};
 	memset(&header, '\0', sizeof(VagFileHeader));
