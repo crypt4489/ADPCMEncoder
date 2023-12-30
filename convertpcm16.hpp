@@ -3,15 +3,16 @@
 #include <cstdint>
 #include <cassert>
 #include <limits>
-
-template <int N, typename T_SampleType> struct FIR
+#include <algorithm>
+template <int N, typename T_SampleType>
+struct FIR
 {
 	float coefficients[N];
 
 	FIR(std::vector<float> _coef)
 	{
 		assert(_coef.size() == N);
-		memcpy(coefficients, _coef.data(), sizeof(float) * N);
+		for (int i = 0; i<N; i++) coefficients[i] = _coef[i];
 	}
 
 	T_SampleType CalculateNthSample(T_SampleType sample, int index)
@@ -21,12 +22,13 @@ template <int N, typename T_SampleType> struct FIR
 	}
 };
 
-template <typename T_SampleType> class ConvertPCM16Data
+template <typename T_SampleType>
+class ConvertPCM16Data
 {
 public:
 	uint64_t GetOutSize() const { return outSize; }
 
-	int16_t* convert()
+	int16_t *convert()
 	{
 		if (usefir)
 		{
@@ -40,26 +42,30 @@ public:
 
 protected:
 	static constexpr int FIRSIZE = 4;
-	FIR<FIRSIZE, T_SampleType>* fir = nullptr;
+	
+	FIR<FIRSIZE, T_SampleType> *fir = nullptr;
+	
 	bool usefir = false;
-	int16_t* outSamples;
 	uint64_t sampleSize;
-	uint64_t outSize;
-	uint8_t* inSamples;
-	T_SampleType *convertSamples;
+	uint8_t *inSamples;
 	uint8_t bytesPerSample;
+	uint64_t outSize;
+	int16_t *outSamples;
+	T_SampleType *convertSamples;
 
-	ConvertPCM16Data(bool _use, uint64_t inSize, uint8_t *samples, uint8_t bps, uint64_t _outSize, std::vector<float> coef) : 
-		usefir(_use), 
-		sampleSize(inSize), 
-		inSamples(samples),
-		outSamples(nullptr),
-		convertSamples(nullptr),
-		bytesPerSample(bps), 
-		outSize(_outSize)
+	ConvertPCM16Data(bool _use, uint64_t inSize, uint8_t *samples, 
+	uint8_t bps, uint64_t _outSize, std::vector<float> coef) : 
+	usefir(_use),												  
+	sampleSize(inSize),
+	inSamples(samples),
+	bytesPerSample(bps),
+	outSize(_outSize),
+	outSamples(nullptr),
+	convertSamples(nullptr)
 
 	{
-		if (usefir) {
+		if (usefir)
+		{
 			fir = new (std::nothrow) FIR<FIRSIZE, T_SampleType>(coef);
 		}
 
@@ -68,14 +74,18 @@ protected:
 
 	virtual ~ConvertPCM16Data()
 	{
-		if (fir) delete fir;
-		if (outSamples) delete outSamples;
-		if (convertSamples) delete convertSamples;
+		if (fir)
+			delete fir;
+		if (outSamples)
+			delete outSamples;
+		if (convertSamples)
+			delete convertSamples;
 	}
 
-	int16_t* convertwithfir()
+	int16_t *convertwithfir()
 	{
-		int outIndex = FIRSIZE - 2;;
+		int outIndex = FIRSIZE - 2;
+		;
 
 		for (int64_t i = (FIRSIZE - 2) * bytesPerSample; i >= 0; i -= bytesPerSample)
 		{
@@ -99,7 +109,7 @@ protected:
 		return outSamples;
 	}
 
-	int16_t* convertwithoutfir()
+	int16_t *convertwithoutfir()
 	{
 		uint64_t outIndex = outSize - 1;
 
@@ -114,36 +124,35 @@ protected:
 	virtual int16_t convertto16(int64_t index) = 0;
 	virtual int16_t convertto16(T_SampleType val) = 0;
 	virtual T_SampleType convertfirsample(int64_t index) = 0;
-
-	
 };
 
-template <typename T_SampleType> class ConvertPCM16 : private ConvertPCM16Data<T_SampleType>
+template <typename T_SampleType>
+class ConvertPCM16 : private ConvertPCM16Data<T_SampleType>
 {
 public:
 	ConvertPCM16() = delete;
 	~ConvertPCM16() = delete;
-	int16_t* convert() override { return nullptr; }
+	int16_t *convert() override { return nullptr; }
+
 protected:
 	int16_t convertto16(int64_t index) { return 0; }
 	int16_t convertto16(T_SampleType val) { return 0; }
 	T_SampleType convertfirsample(int64_t index) { return 0; }
 };
 
-
-template <> class ConvertPCM16<uint8_t> : public ConvertPCM16Data<uint8_t>
+template <>
+class ConvertPCM16<uint8_t> : public ConvertPCM16Data<uint8_t>
 {
 public:
 	ConvertPCM16() = delete;
-	ConvertPCM16(bool _usefir, 
-		std::vector<float> coef,
-		uint64_t inSize,
-		uint8_t *samples) : ConvertPCM16Data(_usefir, inSize, samples, 1, inSize, coef) {}
+	ConvertPCM16(bool _usefir,
+				 std::vector<float> coef,
+				 uint64_t inSize,
+				 uint8_t *samples) : ConvertPCM16Data(_usefir, inSize, samples, 1, inSize, coef) {}
 
 	~ConvertPCM16() = default;
 
 protected:
-
 	int16_t convertto16(int64_t index) override
 	{
 		return static_cast<int16_t>(inSamples[index] - 0x80) << 8;
@@ -160,19 +169,19 @@ protected:
 	}
 };
 
-template <> class ConvertPCM16<int16_t> : public ConvertPCM16Data<int16_t>
+template <>
+class ConvertPCM16<int16_t> : public ConvertPCM16Data<int16_t>
 {
 public:
 	ConvertPCM16() = delete;
 	ConvertPCM16(bool _usefir,
-		std::vector<float> coef,
-		uint64_t inSize,
-		uint8_t* samples) : ConvertPCM16Data(_usefir, inSize, samples, 2, inSize >> 1, coef) {}
+				 std::vector<float> coef,
+				 uint64_t inSize,
+				 uint8_t *samples) : ConvertPCM16Data(_usefir, inSize, samples, 2, inSize >> 1, coef) {}
 
 	~ConvertPCM16() = default;
 
 protected:
-
 	int16_t convertto16(int64_t index) override
 	{
 		int16_t lowerByte = (int16_t)inSamples[index];
@@ -193,20 +202,19 @@ protected:
 	}
 };
 
-
-template <> class ConvertPCM16<int32_t> : public ConvertPCM16Data<int32_t>
+template <>
+class ConvertPCM16<int32_t> : public ConvertPCM16Data<int32_t>
 {
 public:
 	ConvertPCM16() = delete;
 	ConvertPCM16(bool _usefir,
-		std::vector<float> coef,
-		uint32_t inSize,
-		uint8_t* samples) : ConvertPCM16Data(_usefir, inSize, samples, 4, inSize >> 2, coef) {}
+				 std::vector<float> coef,
+				 uint32_t inSize,
+				 uint8_t *samples) : ConvertPCM16Data(_usefir, inSize, samples, 4, inSize >> 2, coef) {}
 
 	~ConvertPCM16() = default;
 
 protected:
-
 	int16_t convertto16(int64_t index) override
 	{
 		int32_t lowerByte = (int32_t)inSamples[index];
@@ -218,8 +226,13 @@ protected:
 
 	int16_t convertto16(int32_t val) override
 	{
-		return (std::numeric_limits<int16_t>::max() - std::numeric_limits<int16_t>::min()) * 
-			(float)(val / (uint64_t)(std::numeric_limits<int32_t>::max() - std::numeric_limits<int32_t>::min()));
+		uint32_t num = static_cast<uint32_t>(std::numeric_limits<int16_t>::max() - std::numeric_limits<int16_t>::min());
+
+		uint64_t denom = static_cast<uint64_t>(std::numeric_limits<int32_t>::max()) - std::numeric_limits<int32_t>::min();
+
+		int16_t output = num * static_cast<float>(val) / denom;
+
+		return output;
 	}
 
 	int32_t convertfirsample(int64_t index) override

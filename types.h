@@ -1,14 +1,5 @@
 #pragma once
 
-typedef unsigned char u8;
-typedef char s8;
-typedef unsigned short u16;
-typedef signed short s16;
-typedef unsigned int u32;
-typedef int s32;
-
-
-
 struct wavfile_header_t;
 typedef struct wavfile_header_t WavFileHeader;
 struct wavfile_holder_t;
@@ -38,23 +29,23 @@ struct wavfile_header_t {
 struct wavfile_holder_t
 {
 	WavFileHeader header;
-	u8* samples;
+	unsigned char* samples;
 };
 
 
 struct vagfile_header_t {
-	u8 magic[4];
-	u32 version;
-	u32 reserved4;
-	u32 dataLength;
-	u32 sampleRate;
-	u8 reserved10[10];
-	u8 channels;
-	u8 reservedbyte;
-	s8 filename[16];
+	unsigned char magic[4];
+	unsigned int version;
+	unsigned int reserved4;
+	unsigned int dataLength;
+	unsigned int sampleRate;
+	unsigned char reserved10[10];
+	unsigned char channels;
+	unsigned char reservedbyte;
+	char filename[16];
 };
 
 struct vagfile_holder_t {
 	struct vagfile_header_t header;
-	u8* samples;
+	unsigned char* samples;
 };
