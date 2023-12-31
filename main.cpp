@@ -14,6 +14,7 @@
 #define BYTESWAP(x) __builtin_bswap32(x)
 #endif
 #include "convertpcm16.hpp"
+#include "program.hpp"
 static float lut[5][2] = { { 0.0, 0.0 },
 							{  -60.0 / 64.0, 0.0 },
 							{ -115.0 / 64.0, 52.0 / 64.0 },
@@ -42,14 +43,14 @@ typedef struct enc_block_t
 
 void CreateVagFile(std::ofstream &stream, VagFileHeader *header, uint8_t* buffer, uint32_t size)
 {
-	stream.write((char*)header, sizeof(VagFileHeader));
+	stream.write(reinterpret_cast<char*>(header), sizeof(VagFileHeader));
 	char pad[16] = {0};
 	stream.write(&pad[0], 16);
-	stream.write((char*)buffer, size);
+	stream.write(reinterpret_cast<char*>(buffer), size);
 }
 
 
-uint8_t* CreateVagSamples(int16_t* samples, uint32_t len, uint32_t* outSize, uint32_t loopStart, uint32_t loopEnd, uint32_t loopFlag)
+std::vector<uint8_t> CreateVagSamples(int16_t* samples, uint32_t len, uint32_t loopStart, uint32_t loopEnd, bool loopFlag)
 {
 	float _hist_1 = 0.0, _hist_2 = 0.0;
 	float hist_1 = 0.0, hist_2 = 0.0;
@@ -67,13 +68,10 @@ uint8_t* CreateVagSamples(int16_t* samples, uint32_t len, uint32_t* outSize, uin
 	if (!loopFlag)
 		sizeOfOut += sizeOfWrite;
 
-	uint8_t* outBuffer = new (std::nothrow) uint8_t[sizeOfOut];
+	std::vector<uint8_t> vagFile(sizeOfOut);
 
-	uint8_t* ret = outBuffer;
+	std::vector<uint8_t>::iterator outBuffer = vagFile.begin();
 
-	std::memset(outBuffer, '\0', sizeOfOut);
-
-	uint32_t globalIndex = 0;
 	uint32_t bytesRead = 0;
 	EncBlock block{ 0, 0, 0, {0} };
 	for (int i = 0; i < fullChunks; i++)
@@ -213,28 +211,27 @@ uint8_t* CreateVagSamples(int16_t* samples, uint32_t len, uint32_t* outSize, uin
 		}
 
 		samples += 28;
-		int8_t lastPredictAndShift = (((block.predict << 4) & 0xF0) | (block.shift & 0x0F));
-		outBuffer[globalIndex++] = lastPredictAndShift;
-		outBuffer[globalIndex++] = block.flags;
+		int8_t lastPredictAndShift = static_cast<int8_t>(((block.predict << 4) & 0xF0) | (block.shift & 0x0F));
+		*outBuffer++ = lastPredictAndShift;
+		*outBuffer++ = block.flags;
 		for (int h = 0; h < 14; h++)
-			outBuffer[globalIndex++] = block.sample[h];
+			*outBuffer++ = block.sample[h];
 		bytesRead += chunkSize;
 	}
 
 	if (!loopFlag)
 	{
 		EncBlock block{ 0, 0, VAGF_PLAYBACK_END, {0} };
-		outBuffer[globalIndex++] = 0;
-		outBuffer[globalIndex++] = block.flags;
+		*outBuffer++ = 0;
+		*outBuffer++ = block.flags;
 		for (int h = 0; h < 14; h++)
-			outBuffer[globalIndex++] = (uint8_t)block.sample[h];
+			*outBuffer++ = block.sample[h];
 	}
 
-	*outSize = sizeOfOut;
-	return ret;
+	return vagFile;
 }
 
-WavFile* LoadWavFile(const char* name)
+WavFile* LoadWavFile(std::string name)
 {
 	std::ifstream filehandle(name, std::ios::binary | std::ios::ate);
 
@@ -245,8 +242,8 @@ WavFile* LoadWavFile(const char* name)
 	}
 
 	filehandle.seekg(0, std::ios_base::end);
-
-    std::streampos filesize = filehandle.tellg();
+	
+	std::streampos filesize = filehandle.tellg();
 
 	std::vector<uint8_t> filedata(filesize);
 
@@ -276,7 +273,7 @@ WavFile* LoadWavFile(const char* name)
 	if (list == "data")
 	{
 		//memcpy(&wavFile->header.data_tag[0], list, 4);
-		std::copy(&list[0], &list[4], &wavFile->header.data_tag[0]);
+		std::copy(list.begin(), list.end(), &wavFile->header.data_tag[0]);
 	}
 	else if (list == "list")
 	{
@@ -294,21 +291,13 @@ WavFile* LoadWavFile(const char* name)
 		buffer += (skip + 4);
 		std::copy(buffer, buffer+4, &wavFile->header.data_tag[0]);
 	} else {
-		//search for a bit for the data tag.
-		int i = 0;
-		
-		for (; i<32; i++)
+		buffer = filedata.begin() + 20 + wavFile->header.fmt_length;
+		std::string data(buffer, buffer+4);
+		if (data == "data")
 		{
-			buffer += 4;
-			std::string data(buffer, buffer+4);
-			if (data == "data")
-			{
-				std::copy(buffer, buffer+4, &wavFile->header.data_tag[0]);
-				break;
-			}
+			std::copy(data.begin(), data.end(), &wavFile->header.data_tag[0]);
 		}
-
-		if (i == 32)
+		else 
 		{
 			std::cout << "Unable to read WAV file" << std::endl;
 			delete wavFile;
@@ -374,8 +363,19 @@ uint8_t* LoadLmpFile(const char* name, int *size, int *samplerate)
 
 int main(int argc, char **argv)
 {
+	Program *program;
+	try
+	{
+		program = new Program(argc, argv);
+	}
+	catch(const std::exception& e)
+	{
+		std::cerr << e.what() << '\n';
+		return -1;
+	}
+	
 	int sampleRate = 0;
-	WavFile* file = LoadWavFile("./laugh.wav");
+	WavFile* file = LoadWavFile(program->GetFilePath());
 
 	if (file == NULL)
 	{
@@ -386,9 +386,7 @@ int main(int argc, char **argv)
 	
 	sampleRate = file->header.sample_rate;
 	
-	std::cout << file->header.num_channels << " " << file->header.bits_per_sample << " " << file->header.data_length << std::endl;
-	
-	int16_t* samples; 
+	std::cout << file->header.fmt_length << " " << file->header.bits_per_sample << " " << file->header.data_length << std::endl;
 
 	std::vector<float> coef = { .15f, .15f, .15f, .15f };
 	
@@ -398,18 +396,18 @@ int main(int argc, char **argv)
 	ConvertPCM16<int32_t>* conversion = new (std::nothrow) ConvertPCM16<int32_t>(false, coef, file->header.data_length, rawsamples);
 	if (conversion == nullptr)
 	{
-		free(file);
+		delete file;
 		return -1;
 	}
 
-	samples = conversion->convert();
-	uint32_t shortSize = conversion->GetOutSize();
 
-	uint32_t outsize = 0;
+	
 
-	uint8_t* encoded = CreateVagSamples(samples, shortSize, &outsize, 0, 0, 0);
+	std::vector<uint8_t> encoded = CreateVagSamples(conversion->convert(), conversion->GetOutSize(), 0, 0, false);
 
-	std::ofstream outFile(".\\dude4.vag", std::ios::binary);
+	uint32_t outsize = encoded.size();
+
+	std::ofstream outFile(program->GetOutputFile(), std::ios::binary);
 
 	std::cout << outsize << std::endl;
 
@@ -420,18 +418,14 @@ int main(int argc, char **argv)
 	header.sampleRate = BYTESWAP(sampleRate);
 	header.dataLength = BYTESWAP(outsize);
 	header.channels = file->header.num_channels;
-	std::string output("dude.vag");
-	std::copy(output.begin(), output.end(), &header.filename[0]);
+	std::string output = program->GetOutputFile();
+	std::copy(output.begin(), output.begin()+16, &header.filename[0]);
 	std::cout << file->header.num_channels << std::endl;
 
-	CreateVagFile(outFile, &header, encoded, outsize);
+	CreateVagFile(outFile, &header, encoded.data(), outsize);
 
 	outFile.close();
 	
-	//free(samples);
-	free(encoded);
-	//free(rawsamples);
-	//free(file);
 	delete file;
 
 	return 0;

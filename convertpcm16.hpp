@@ -1,9 +1,11 @@
+#pragma once
 
 #include <vector>
 #include <cstdint>
 #include <cassert>
 #include <limits>
 #include <algorithm>
+
 template <int N, typename T_SampleType>
 struct FIR
 {
@@ -11,6 +13,7 @@ struct FIR
 
 	FIR(std::vector<float> _coef)
 	{
+		assert(N >= 2);
 		assert(_coef.size() == N);
 		for (int i = 0; i<N; i++) coefficients[i] = _coef[i];
 	}
@@ -85,7 +88,6 @@ protected:
 	int16_t *convertwithfir()
 	{
 		int outIndex = FIRSIZE - 2;
-		;
 
 		for (int64_t i = (FIRSIZE - 2) * bytesPerSample; i >= 0; i -= bytesPerSample)
 		{
