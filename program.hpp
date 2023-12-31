@@ -30,6 +30,9 @@ public:
     std::string GetFileName() const { return filename; }
     std::string GetOutputFile() const { return filename + ".vag"; }
     std::string GetFilePath() const { return filepath; }
+    void Execute() {
+
+    }
 private:
     bool noisereduce; //use fir = true, don't use = false
     bool programtype; //encode = false, decode = true
@@ -108,8 +111,6 @@ private:
         std::string ext = inputfile.substr(dotpos+1);
 
         filename = inputfile.substr(0, dotpos);
-
-        std::cout << filename << " " << ext << std::endl;
 
         auto keyIter = filetypemap.find(ext);
 

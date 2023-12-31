@@ -80,9 +80,9 @@ protected:
 		if (fir)
 			delete fir;
 		if (outSamples)
-			delete outSamples;
+			delete[] outSamples;
 		if (convertSamples)
-			delete convertSamples;
+			delete[] convertSamples;
 	}
 
 	int16_t *convertwithfir()
