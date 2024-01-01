@@ -30,7 +30,7 @@ struct wavfile_header_t
 
 struct wavfile_holder_t
 {
-    WavFileHeader header;
+    WavFileHeader header{};
     uint8_t *samples;
     wavfile_holder_t() = default;
     ~wavfile_holder_t()

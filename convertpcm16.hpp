@@ -198,9 +198,7 @@ protected:
 
 	int16_t convertfirsample(int64_t index) override
 	{
-		int16_t lowerByte = (int16_t)inSamples[index];
-		int16_t topByte = ((int16_t)inSamples[index + 1]) << 8;
-		return (topByte | lowerByte);
+		return convertto16(index);
 	}
 };
 
@@ -208,6 +206,7 @@ template <>
 class ConvertPCM16<int32_t> : public ConvertPCM16Data<int32_t>
 {
 public:
+
 	ConvertPCM16() = delete;
 	ConvertPCM16(bool _usefir,
 				 std::vector<float> coef,
@@ -217,13 +216,11 @@ public:
 	~ConvertPCM16() = default;
 
 protected:
+
 	int16_t convertto16(int64_t index) override
 	{
-		int32_t lowerByte = (int32_t)inSamples[index];
-		int32_t middle1Byte = ((int32_t)inSamples[index + 1]) << 8;
-		int32_t middle2Byte = ((int32_t)inSamples[index + 2]) << 16;
-		int32_t topByte = ((int32_t)inSamples[index + 3]) << 24;
-		return convertto16(topByte | middle2Byte | middle1Byte | lowerByte);
+		int32_t ret = bytepacker32(index);
+		return convertto16(ret);
 	}
 
 	int16_t convertto16(int32_t val) override
@@ -238,6 +235,13 @@ protected:
 	}
 
 	int32_t convertfirsample(int64_t index) override
+	{
+		return bytepacker32(index);
+	}
+
+private:
+
+	int32_t bytepacker32(int64_t index)
 	{
 		int32_t lowerByte = (int32_t)inSamples[index];
 		int32_t middle1Byte = ((int32_t)inSamples[index + 1]) << 8;

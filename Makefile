@@ -9,11 +9,17 @@ objs := $(patsubst ./%, $(OBJS_DIR)/%, $(SRC_CPP:%.cpp=%.o))
 # Define target
 target := ADPCMEncoder
 
+build_type ?= DEBUG
+
 incflags := -I$(INC_DIR)
 
 # Compiler and flags
 CXX := g++
 cppflags := -std=c++17 -Wall
+
+ifeq ($(build_type), RELEASE)
+	cppflags += -O3
+endif
 
 # Build rule for object files
 $(OBJS_DIR)/%.o: %.cpp

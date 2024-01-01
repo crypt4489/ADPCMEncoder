@@ -61,7 +61,7 @@ struct vagfile_header_t
 
 struct vagfile_holder_t
 {
-    struct vagfile_header_t header;
+    struct vagfile_header_t header{};
     std::vector<uint8_t> samples;
 
     vagfile_holder_t(uint32_t sampleRate, uint8_t channels, std::string filename)
@@ -73,7 +73,8 @@ struct vagfile_holder_t
         header.version = BYTESWAP(32);
         header.sampleRate = BYTESWAP(sampleRate);
         header.channels = channels;
-        std::copy(filename.begin(), filename.begin() + 16, &header.filename[0]);
+        auto endIter = (filename.size() <= 16) ? filename.end() : filename.begin() + 16;
+        std::copy(filename.begin(), endIter, &header.filename[0]);
     }
 
     void CreateVagFile(std::ofstream &stream)
@@ -261,6 +262,7 @@ struct vagfile_holder_t
             for (int h = 0; h < 14; h++)
                 *outBuffer++ = block.sample[h];
         }
+        
         header.dataLength = BYTESWAP(samples.size());
     }
 };

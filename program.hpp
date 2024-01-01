@@ -45,7 +45,6 @@ public:
     }
     std::string GetFilePath() const { return filepath; }
     int Execute() {
-        
         if (usehelp) {
             PrintHelp();
             return 0;
