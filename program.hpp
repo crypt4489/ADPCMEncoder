@@ -25,7 +25,7 @@ public:
     Program() = delete;
     Program(const Program&) = delete;
     Program(const Program&&) = delete;
-    
+
     explicit Program(int argc, char **argv) :
     noisereduce(true),
     programtype(false),
@@ -119,6 +119,12 @@ private:
 
     bool ParseArguments(int argc, char **argv)
     {
+        auto tolowercase = [](std::string in) {
+            std::string res;
+            for (uint32_t i = 0; i<in.size(); i++)
+                res.push_back(std::tolower(in[i]));
+            return res;
+        };
         arguments.assign(&argv[1], argv+argc);
         for (auto it : arguments)
         {
@@ -128,16 +134,16 @@ private:
                 return false;
             }
             
-            if (it == "-d" || it == "--decode")
+            if (tolowercase(it) == "-d" || tolowercase(it) == "--decode")
                 programtype = true;
-            else if (it == "-nf" || it == "--nofir")
+            else if (tolowercase(it) == "-nf" || tolowercase(it) == "--nofir")
                 noisereduce = false;
-            else if (it == "-h" || it == "--help")
+            else if (tolowercase(it) == "-h" || tolowercase(it) == "--help")
             {
                 usehelp = true;
                 return true;
             }
-            else if (it.substr(0, 3) == "-o=" || it.substr(0, 9) == "--output=")
+            else if (tolowercase(it.substr(0, 3)) == "-o=" || tolowercase(it.substr(0, 9)) == "--output=")
             {
                 if (!ParseOutputFile(it))
                     return false;
