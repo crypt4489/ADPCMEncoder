@@ -1,10 +1,10 @@
 #pragma once
 
-#include <vector>
-#include <cstdint>
-#include <cassert>
-#include <limits>
 #include <algorithm>
+#include <cassert>
+#include <cstdint>
+#include <limits>
+#include <vector>
 
 template <int N, typename T_SampleType>
 struct FIR

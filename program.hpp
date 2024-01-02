@@ -1,16 +1,18 @@
 #pragma once
+
 #include <cctype>
 #include <filesystem>
 #include <iostream>
+#include <memory>
 #include <regex>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <memory>
 
 #include "wav.hpp"
 #include "vag.hpp"
 #include "convertpcm16.hpp"
+
 class Program
 {
 public:
@@ -30,8 +32,10 @@ public:
     noisereduce(true),
     programtype(false),
     usehelp(false),
-    type(UNKNOWNTYPE)
+    type(UNKNOWNTYPE),
+    filepathregex(new std::regex("[A-Za-z0-9 _\\-/\\\\.]*\\.[A-Za-z0-9]+$"))
     {
+
         if (!ParseArguments(argc, argv))
         {
             PrintHelp();
@@ -39,7 +43,9 @@ public:
         }
     }
 
-    ~Program() = default;
+    ~Program() {
+        delete filepathregex;
+    }
 
     bool GetNoiseReduce() const { return noisereduce; }
     
@@ -58,51 +64,107 @@ public:
     std::string GetFilePath() const { return filepath; }
 
     void Execute() {
-        if (usehelp) PrintHelp();
+        if (usehelp) 
+        {
+            PrintHelp();
+            return;
+        }
+
+        uint8_t *rawsamples{};
+
+        uint32_t sampleRate{}, samplesSize{};
+
+        uint16_t channels{};
+
+        uint32_t bps{};
+
+        std::vector<float> coef = {.15f, .15f, .15f, .15f};
             
-        std::unique_ptr<WavFile> file(new (std::nothrow) WavFile(GetFilePath()));
+        switch(type)
+        {
+            case WAVTYPE:
+            {
+                std::unique_ptr<WavFile> file(new (std::nothrow) WavFile(GetFilePath()));
 
-		if (file == nullptr)
-			throw std::runtime_error("Cannot create WAV file");
+		        if (!file)
+			        throw std::runtime_error("Cannot create WAV file");
+                
+                rawsamples = file->samples;
 
-		uint8_t *rawsamples = file->samples;
+		        sampleRate = file->header.sample_rate;
 
-		uint32_t sampleRate = file->header.sample_rate;
+		        samplesSize = file->header.data_length;
 
-		uint32_t samplesSize = file->header.data_length;
+		        channels = file->header.num_channels;
 
-		uint16_t channels = file->header.num_channels;
+                bps = file->header.bits_per_sample;
 
-		std::vector<float> coef = {.15f, .15f, .15f, .15f};
+                break;
+            }
+            default:
+                throw std::runtime_error("Invalid file type");
+        }
 
 		std::cout << samplesSize << " " 
 					<< channels << " "
-					<< sampleRate << "\n";
+					<< sampleRate << " " << bps << "\n";
 
-		// ConvertPCM16<int16_t> *conversion = new (std::nothrow) ConvertPCM16<int16_t>(false, coef, file->header.data_length, rawsamples);
+        int16_t *convertedsamples;
+        uint64_t outsize;
 
-		// ConvertPCM16<uint8_t>* conversion = new (std::nothrow) ConvertPCM16<uint8_t>(true, coef, file->header.data_length, rawsamples);
-		std::unique_ptr<ConvertPCM16<int32_t>> conversion(new (std::nothrow) 
-		ConvertPCM16<int32_t>(GetNoiseReduce(), 
-		coef, samplesSize, rawsamples));
+        switch(bps)
+        {
+            case 8:
+            {
+                std::unique_ptr<ConvertPCM16<uint8_t>> conversion(new (std::nothrow) 
+                                ConvertPCM16<uint8_t>(GetNoiseReduce(), coef, samplesSize, rawsamples));
+                if (!conversion)
+			        throw std::runtime_error("Cannot create 8-bit sampling conversion");
+
+                convertedsamples = conversion->convert();
+                outsize = conversion->GetOutSize();
+
+                break;
+            }
+            case 16:
+            {
+                std::unique_ptr<ConvertPCM16<int16_t>> conversion(new (std::nothrow) 
+                                ConvertPCM16<int16_t>(GetNoiseReduce(), coef, samplesSize, rawsamples));
+                if (!conversion)
+			        throw std::runtime_error("Cannot create 16-bit sampling conversion");
+                
+                convertedsamples = conversion->convert();
+                outsize = conversion->GetOutSize();
+
+                break;
+            }
+            case 32:
+            {
+                std::unique_ptr<ConvertPCM16<int32_t>> conversion(new (std::nothrow) 
+		                        ConvertPCM16<int32_t>(GetNoiseReduce(), coef, samplesSize, rawsamples));
+                if (!conversion)
+			        throw std::runtime_error("Cannot create 32-bit sampling conversion");  
+                
+                convertedsamples = conversion->convert();
+                outsize = conversion->GetOutSize(); 
+
+                break;
+            }
+
+            default:
+                throw std::runtime_error("Unhandled bit rate or sample data type");
+        }
 		
-		if (conversion == nullptr)
-			throw std::runtime_error("Cannot create sampling conversion");
+        std::unique_ptr<VagFile> vagFile(new (std::nothrow) VagFile(sampleRate, channels, GetOutputFile()));
 
-		std::unique_ptr<VagFile> vagFile(new VagFile(sampleRate, channels, GetOutputFile()));
+        if (!vagFile)
+            throw std::runtime_error("Cannot create vagfile object");
 
-		std::cout << conversion->GetOutSize() << std::endl;
+		vagFile->CreateVagSamples(convertedsamples, outsize, 0, 0, false);
 
-		vagFile->CreateVagSamples(conversion->convert(), conversion->GetOutSize(), 0, 0, false);
-
-		std::ofstream outFile(GetOutputFile(), std::ios::binary);
-
-		std::cout << vagFile->samples.size() << "\n";
-
-		vagFile->WriteVagFile(outFile);
-
-		outFile.close();
+		vagFile->WriteVagFile(GetOutputFile());
     }
+
 private:
     bool noisereduce; //use fir = true, don't use = false
     bool programtype; //encode = false, decode = true
@@ -112,6 +174,7 @@ private:
     std::string outputfile;
     FileType type;
     std::vector<std::string> arguments; 
+    std::regex *filepathregex;
     const std::unordered_map<std::string, FileType> filetypemap
     {
         { "wav", WAVTYPE }
@@ -120,9 +183,9 @@ private:
     bool ParseArguments(int argc, char **argv)
     {
         auto tolowercase = [](std::string in) {
-            std::string res;
-            for (uint32_t i = 0; i<in.size(); i++)
-                res.push_back(std::tolower(in[i]));
+            std::string res{};
+            for (auto i : in)
+                res.push_back(std::tolower(i));
             return res;
         };
         arguments.assign(&argv[1], argv+argc);
@@ -143,7 +206,7 @@ private:
                 usehelp = true;
                 return true;
             }
-            else if (tolowercase(it.substr(0, 3)) == "-o=" || tolowercase(it.substr(0, 9)) == "--output=")
+            else if (tolowercase(it.substr(0, 2)) == "-o" || tolowercase(it.substr(0, 8)) == "--output")
             {
                 if (!ParseOutputFile(it))
                     return false;
@@ -168,7 +231,7 @@ private:
 
     bool ParseInputFile(std::string inputfile)
     {
-        if (!std::regex_match(inputfile, std::regex("[A-Za-z0-9 _\\-/\\\\.]*\\.[A-Za-z0-9]+$")))
+        if (!std::regex_match(inputfile, *filepathregex))
         {
             return false;
         }
@@ -208,13 +271,24 @@ private:
 
     bool ParseOutputFile(std::string arg)
     {
-        std::regex regex("[=]+");
-        std::sregex_token_iterator first{arg.begin(), arg.end(), regex, -1}, last;//the '-1' is what makes the regex split (-1 := what was not matched)
-        std::vector<std::string> tokens{first, last};
-        outputfile = tokens[tokens.size()-1];
-        if (!std::regex_match(outputfile, std::regex("[A-Za-z0-9 _\\-/\\\\.]*\\.[A-Za-z0-9]+$")))
+        size_t split = arg.rfind("=");
+
+        if (split == std::string::npos)
+        {
+            std::cerr << "Incorrect output argument format " << arg << " missing = delimiter\n";
+            return false;
+        }
+
+        outputfile = arg.substr(split+1);
+        
+        if (!std::regex_match(outputfile, *filepathregex))
         {
             std::cerr << "Incorrect output file format " << outputfile << "\n";
+            return false;
+        } 
+        else if (outputfile.substr(outputfile.size()-4) != ".vag")
+        {
+            std::cerr << "Incorrect extension, should be .vag, not " << arg.substr(arg.size()-4) << "\n";
             return false;
         }
         return true;
@@ -229,6 +303,7 @@ private:
         std::cout << "-d, --decode                  Decode a valid VAG file (encode is default)\n\n";  
         std::cout << "-nf, --no-fir                 Don't use FIR sampling for noise (FIR usage is default)\n\n";
         std::cout << "-o=[FILE], --output=[FILE]    Output file name (Input file name is default)\n\n";
+        std::cout << "All Options are case insensitive for alpha characters\n\n"; 
         std::cout << "Filename:\n\n";
         std::cout << "ADPCMEncoder accepts WAV files\n\n";  
     }

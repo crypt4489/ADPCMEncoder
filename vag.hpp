@@ -1,19 +1,20 @@
 #pragma once
 
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <limits>
-#include <cmath>
 #include <algorithm>
-#include <iterator>
-#include <vector>
+#include <cmath>
+#include <fstream>
 #ifdef _MSC_VER
 #include <intrin.h>
 #define BYTESWAP(x) _byteswap_ulong(x)
 #else
 #define BYTESWAP(x) __builtin_bswap32(x)
 #endif
+#include <iostream>
+#include <iterator>
+#include <limits>
+#include <string>
+#include <vector>
+
 
 struct vagfile_header_t;
 typedef struct vagfile_header_t VagFileHeader;
@@ -77,16 +78,18 @@ struct vagfile_holder_t
         std::copy(filename.begin(), endIter, &header.filename[0]);
     }
 
-    void WriteVagFile(std::ofstream &stream)
+    void WriteVagFile(std::string name)
     {
+        std::ofstream stream(name, std::ios::binary);
         uint32_t size = samples.size();
         stream.write(reinterpret_cast<char *>(&header), sizeof(VagFileHeader));
         char pad[16] = {0};
         stream.write(&pad[0], 16);
         stream.write(reinterpret_cast<char *>(samples.data()), size);
+        stream.close();
     }
 
-    void CreateVagSamples(int16_t *insamples, uint32_t len, uint32_t loopStart, uint32_t loopEnd, bool loopFlag)
+    void CreateVagSamples(int16_t *insamples, uint64_t len, uint32_t loopStart, uint32_t loopEnd, bool loopFlag)
     {
         float _hist_1 = 0.0, _hist_2 = 0.0;
         float hist_1 = 0.0, hist_2 = 0.0;

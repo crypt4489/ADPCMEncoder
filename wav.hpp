@@ -1,11 +1,14 @@
-#include <cstdint>
-#include <iostream>
-#include <fstream>
-#include <string>
+#pragma once
+
 #include <algorithm>
+#include <cstdint>
+#include <fstream>
+#include <iostream>
 #include <iterator>
-#include <vector>
 #include <memory>
+#include <string>
+#include <vector>
+
 struct wavfile_header_t;
 typedef struct wavfile_header_t WavFileHeader;
 struct wavfile_holder_t;
@@ -43,7 +46,7 @@ struct wavfile_holder_t
         if (samples)
             delete[] samples;
     };
-    
+
 private:
     void LoadWavFile(std::string name)
     {
