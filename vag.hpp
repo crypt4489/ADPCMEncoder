@@ -77,7 +77,7 @@ struct vagfile_holder_t
         std::copy(filename.begin(), endIter, &header.filename[0]);
     }
 
-    void CreateVagFile(std::ofstream &stream)
+    void WriteVagFile(std::ofstream &stream)
     {
         uint32_t size = samples.size();
         stream.write(reinterpret_cast<char *>(&header), sizeof(VagFileHeader));
@@ -262,7 +262,7 @@ struct vagfile_holder_t
             for (int h = 0; h < 14; h++)
                 *outBuffer++ = block.sample[h];
         }
-        
+
         header.dataLength = BYTESWAP(samples.size());
     }
 };

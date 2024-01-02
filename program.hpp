@@ -14,6 +14,7 @@
 class Program
 {
 public:
+    
     enum FileType
     {
         UNKNOWNTYPE = 0,
@@ -21,6 +22,10 @@ public:
         WAVTYPE = 2
     };
 
+    Program() = delete;
+    Program(const Program&) = delete;
+    Program(const Program&&) = delete;
+    
     explicit Program(int argc, char **argv) :
     noisereduce(true),
     programtype(false),
@@ -34,28 +39,31 @@ public:
         }
     }
 
+    ~Program() = default;
+
     bool GetNoiseReduce() const { return noisereduce; }
+    
     bool GetProgramType() const { return programtype; }
+    
     FileType GetFileType() const { return type; }
+    
     std::string GetFileName() const { return filename; }
+
     std::string GetOutputFile() const { 
         if (outputfile.empty())
             return filename + ".vag";
         return outputfile;
     }
-    std::string GetFilePath() const { return filepath; }
-    int Execute() {
-        if (usehelp) {
-            PrintHelp();
-            return 0;
-        }
 
-        std::unique_ptr<WavFile> file = WavFile::LoadWavFile(GetFilePath());
+    std::string GetFilePath() const { return filepath; }
+
+    void Execute() {
+        if (usehelp) PrintHelp();
+            
+        std::unique_ptr<WavFile> file(new (std::nothrow) WavFile(GetFilePath()));
 
 		if (file == nullptr)
-		{
-			return -1;
-		}
+			throw std::runtime_error("Cannot create WAV file");
 
 		uint8_t *rawsamples = file->samples;
 
@@ -79,9 +87,7 @@ public:
 		coef, samplesSize, rawsamples));
 		
 		if (conversion == nullptr)
-		{
-			return -1;
-		}
+			throw std::runtime_error("Cannot create sampling conversion");
 
 		std::unique_ptr<VagFile> vagFile(new VagFile(sampleRate, channels, GetOutputFile()));
 
@@ -93,11 +99,9 @@ public:
 
 		std::cout << vagFile->samples.size() << "\n";
 
-		vagFile->CreateVagFile(outFile);
+		vagFile->WriteVagFile(outFile);
 
 		outFile.close();
-
-        return 0;
     }
 private:
     bool noisereduce; //use fir = true, don't use = false
@@ -116,12 +120,6 @@ private:
     bool ParseArguments(int argc, char **argv)
     {
         arguments.assign(&argv[1], argv+argc);
-        std::transform(arguments.begin(), arguments.end(), arguments.begin(), [](std::string in) {
-            std::string res;
-            for (uint32_t i = 0; i<in.size(); i++)
-                res.push_back(std::tolower(in[i]));
-            return res;
-         });
         for (auto it : arguments)
         {
             if (it.empty())
@@ -139,9 +137,10 @@ private:
                 usehelp = true;
                 return true;
             }
-            else if (it == "-o" || it == "-output")
+            else if (it.substr(0, 3) == "-o=" || it.substr(0, 9) == "--output=")
             {
-
+                if (!ParseOutputFile(it))
+                    return false;
             }
             else if (ParseInputFile(it))
                 filepath = it;
@@ -201,14 +200,29 @@ private:
         return true;
     }
 
+    bool ParseOutputFile(std::string arg)
+    {
+        std::regex regex("[=]+");
+        std::sregex_token_iterator first{arg.begin(), arg.end(), regex, -1}, last;//the '-1' is what makes the regex split (-1 := what was not matched)
+        std::vector<std::string> tokens{first, last};
+        outputfile = tokens[tokens.size()-1];
+        if (!std::regex_match(outputfile, std::regex("[A-Za-z0-9 _\\-/\\\\.]*\\.[A-Za-z0-9]+$")))
+        {
+            std::cerr << "Incorrect output file format " << outputfile << "\n";
+            return false;
+        }
+        return true;
+    }
+
     void PrintHelp()
     {
-        std::cout << "ADPCMEncoder - an application for Sony PS2 VAG file encoding/decoding\n\n";
+        std::cout << "\nADPCMEncoder - an application for Sony PS2 VAG file encoding/decoding\n\n";
         std::cout << "Usage: ADPCMEncoder [OPTIONS] [FILENAME]\n\n";
         std::cout << "Options:\n\n";
-        std::cout << "-h, --help         Use cmdline help\n\n"; 
-        std::cout << "-d, --decode       Decode a valid VAG file (encode is default)\n\n";  
-        std::cout << "-nf, --no-fir      Don't use FIR sampling for noise (FIR usage is default)\n\n";
+        std::cout << "-h, --help                    Use cmdline help\n\n"; 
+        std::cout << "-d, --decode                  Decode a valid VAG file (encode is default)\n\n";  
+        std::cout << "-nf, --no-fir                 Don't use FIR sampling for noise (FIR usage is default)\n\n";
+        std::cout << "-o=[FILE], --output=[FILE]    Output file name (Input file name is default)\n\n";
         std::cout << "Filename:\n\n";
         std::cout << "ADPCMEncoder accepts WAV files\n\n";  
     }

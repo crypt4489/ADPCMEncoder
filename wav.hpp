@@ -32,21 +32,26 @@ struct wavfile_holder_t
 {
     WavFileHeader header{};
     uint8_t *samples;
-    wavfile_holder_t() = default;
+    wavfile_holder_t() = delete;
+    wavfile_holder_t(std::string name)
+    {
+        LoadWavFile(name);
+    }
+
     ~wavfile_holder_t()
     {
         if (samples)
             delete[] samples;
     };
-
-    static std::unique_ptr<WavFile> LoadWavFile(std::string name)
+    
+private:
+    void LoadWavFile(std::string name)
     {
         std::ifstream filehandle(name, std::ios::binary | std::ios::ate);
 
         if (!filehandle.is_open())
         {
-            std::cout << "FILE NOT FOUND" << std::endl;
-            return nullptr;
+            throw std::runtime_error("WAV file is unable to be opened");
         }
 
         filehandle.seekg(0, std::ios_base::end);
@@ -61,48 +66,38 @@ struct wavfile_holder_t
 
         filehandle.close();
 
-        std::unique_ptr<WavFile> wavFile(new (std::nothrow) WavFile());
-
-        if (!wavFile)
-        {
-            return nullptr;
-        }
-
         std::vector<uint8_t>::iterator buffer = filedata.begin();
 
-        std::copy(buffer, buffer + 36, &wavFile->header.riff_tag[0]);
+        std::copy(buffer, buffer + 36, &header.riff_tag[0]);
 
-        std::string list(buffer, buffer + 4);
+        buffer = filedata.begin() + 20 + header.fmt_length;
 
-        buffer = filedata.begin() + 20 + wavFile->header.fmt_length;
         std::string data(buffer, buffer + 4);
+        
         if (data == "data")
         {
-            std::copy(data.begin(), data.end(), &wavFile->header.data_tag[0]);
+            std::copy(data.begin(), data.end(), &header.data_tag[0]);
         }
         else
         {
-            std::cout << "Unable to read WAV file" << std::endl;
-            return nullptr;
+             throw std::runtime_error("WAV file does not have DATA tag");   
         }
 
         buffer += 4;
 
-        std::copy(buffer, buffer + 4, reinterpret_cast<uint8_t *>(&wavFile->header.data_length));
+        std::copy(buffer, buffer + 4, reinterpret_cast<uint8_t *>(&header.data_length));
 
-        int dataSize = wavFile->header.data_length;
+        int dataSize = header.data_length;
 
         buffer += 4;
 
-        wavFile->samples = new (std::nothrow) uint8_t[dataSize];
+        samples = new (std::nothrow) uint8_t[dataSize];
 
-        if (!wavFile->samples)
+        if (!samples)
         {
-            return nullptr;
+            throw std::runtime_error("Unable to create samples buffer");
         }
 
-        std::copy(buffer, buffer + dataSize, wavFile->samples);
-
-        return wavFile;
+        std::copy(buffer, buffer + dataSize, samples);
     }
 };
