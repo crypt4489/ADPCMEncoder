@@ -132,7 +132,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="convertpcm16.hpp" />
-    <ClInclude Include="types.h" />
+    <ClInclude Include="file.h" />
+    <ClInclude Include="program.hpp" />
+    <ClInclude Include="vag.hpp" />
+    <ClInclude Include="wav.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

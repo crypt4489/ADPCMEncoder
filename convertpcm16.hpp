@@ -53,8 +53,8 @@ protected:
 	uint8_t *inSamples;
 	uint8_t bytesPerSample;
 	uint64_t outSize;
-	int16_t *outSamples;
-	T_SampleType *convertSamples;
+	std::vector<int16_t>outSamples;
+	std::vector<T_SampleType>convertSamples;
 
 	ConvertPCM16Data(bool _use, uint64_t inSize, uint8_t *samples, 
 	uint8_t bps, uint64_t _outSize, std::vector<float> coef) : 
@@ -62,41 +62,31 @@ protected:
 	sampleSize(inSize),
 	inSamples(samples),
 	bytesPerSample(bps),
-	outSize(_outSize),
-	outSamples(nullptr),
-	convertSamples(nullptr)
+	outSize(_outSize)
 
 	{
 		if (usefir)
 		{
 			fir = new (std::nothrow) FIR<FIRSIZE, T_SampleType>(coef);
 		}
-
-		outSamples = new (std::nothrow) int16_t[outSize];
 	}
 
 	virtual ~ConvertPCM16Data()
 	{
 		if (fir)
 			delete fir;
-		if (outSamples)
-			delete[] outSamples;
-		if (convertSamples)
-			delete[] convertSamples;
+	
 	}
 
 	int16_t *convertwithfir()
 	{
-		int outIndex = FIRSIZE - 2;
-
-		for (int64_t i = (FIRSIZE - 2) * bytesPerSample; i >= 0; i -= bytesPerSample)
+		
+		for (int64_t i = (FIRSIZE-2) * bytesPerSample; i >= 0; i -= bytesPerSample)
 		{
-			outSamples[outIndex--] = convertto16(i);
+			outSamples.push_back(convertto16(i));
 		}
 
-		outIndex = FIRSIZE - 1;
-
-		for (int64_t i = (FIRSIZE - 1 * bytesPerSample); i < sampleSize - 1; i += bytesPerSample)
+		for (int64_t i = (FIRSIZE-1) * bytesPerSample; i < sampleSize - 1; i += bytesPerSample)
 		{
 			T_SampleType sample = 0;
 
@@ -104,11 +94,10 @@ protected:
 			{
 				sample += fir->CalculateNthSample(convertfirsample(i - j), j / bytesPerSample);
 			}
-
-			outSamples[outIndex++] = convertto16(sample);
+			
+			outSamples.push_back(convertto16(sample));
 		}
-
-		return outSamples;
+		return outSamples.data();
 	}
 
 	int16_t *convertwithoutfir()
@@ -117,10 +106,10 @@ protected:
 
 		for (int64_t i = sampleSize - bytesPerSample; i >= 0; i -= bytesPerSample)
 		{
-			outSamples[outIndex--] = convertto16(i);
+			outSamples.push_back (convertto16(i));
 		}
 
-		return outSamples;
+		return outSamples.data();
 	}
 
 	virtual int16_t convertto16(int64_t index) = 0;
@@ -225,9 +214,9 @@ protected:
 
 	int16_t convertto16(int32_t val) override
 	{
-		uint32_t num = static_cast<uint32_t>(std::numeric_limits<int16_t>::max() - std::numeric_limits<int16_t>::min());
+		constexpr uint32_t num = static_cast<uint32_t>(std::numeric_limits<int16_t>::max() - std::numeric_limits<int16_t>::min());
 
-		uint64_t denom = static_cast<uint64_t>(std::numeric_limits<int32_t>::max()) - std::numeric_limits<int32_t>::min();
+		constexpr uint64_t denom = static_cast<uint64_t>(std::numeric_limits<int32_t>::max()) - std::numeric_limits<int32_t>::min();
 
 		int16_t output = num * static_cast<float>(val) / denom;
 

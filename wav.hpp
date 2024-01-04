@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include "file.h"
 struct wavfile_header_t;
 typedef struct wavfile_header_t WavFileHeader;
 struct wavfile_holder_t;
@@ -31,10 +32,9 @@ struct wavfile_header_t
     uint32_t data_length;
 };
 
-struct wavfile_holder_t
+struct wavfile_holder_t : public File
 {
     WavFileHeader header{};
-    uint8_t *samples;
     wavfile_holder_t() = delete;
     wavfile_holder_t(std::string name)
     {
@@ -102,5 +102,10 @@ private:
         }
 
         std::copy(buffer, buffer + dataSize, samples);
+
+        channels = header.num_channels;
+        sampleRate = header.sample_rate;
+        samplesSize = dataSize;
+        bps = header.bits_per_sample;
     }
 };

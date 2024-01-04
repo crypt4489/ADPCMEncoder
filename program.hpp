@@ -6,9 +6,12 @@
 #include <memory>
 #include <regex>
 #include <string>
+#include <tuple>
 #include <unordered_map>
+#include <variant>
 #include <vector>
 
+#include "file.h"
 #include "wav.hpp"
 #include "vag.hpp"
 #include "convertpcm16.hpp"
@@ -33,7 +36,7 @@ public:
     programtype(false),
     usehelp(false),
     type(UNKNOWNTYPE),
-    filepathregex(new std::regex("[A-Za-z0-9 _\\-/\\\\.]*\\.[A-Za-z0-9]+$"))
+    filepathregex(new std::regex("[\\:A-Za-z0-9 _\\-/\\\\.]*\\.[A-Za-z0-9]+$"))
     {
 
         if (!ParseArguments(argc, argv))
@@ -70,34 +73,18 @@ public:
             return;
         }
 
-        uint8_t *rawsamples{};
-
-        uint32_t sampleRate{}, samplesSize{};
-
-        uint16_t channels{};
-
-        uint32_t bps{};
-
         std::vector<float> coef = {.15f, .15f, .15f, .15f};
+
+        std::unique_ptr<File> file;
             
         switch(type)
         {
             case WAVTYPE:
             {
-                std::unique_ptr<WavFile> file(new (std::nothrow) WavFile(GetFilePath()));
+                file =  std::make_unique<WavFile>(GetFilePath()) ;
 
 		        if (!file)
 			        throw std::runtime_error("Cannot create WAV file");
-                
-                rawsamples = file->samples;
-
-		        sampleRate = file->header.sample_rate;
-
-		        samplesSize = file->header.data_length;
-
-		        channels = file->header.num_channels;
-
-                bps = file->header.bits_per_sample;
 
                 break;
             }
@@ -105,62 +92,55 @@ public:
                 throw std::runtime_error("Invalid file type");
         }
 
-		std::cout << samplesSize << " " 
-					<< channels << " "
-					<< sampleRate << " " << bps << "\n";
+		std::cout << file->samplesSize << " " 
+					<< file->channels << " "
+					<< file->sampleRate << " " << file->bps << "\n";
 
-        int16_t *convertedsamples;
-        uint64_t outsize;
+        int16_t* convertedsamplesptr{};
+        uint64_t outsize{};
+        
+        using ConversionType = std::variant<std::unique_ptr<ConvertPCM16<uint8_t>>, std::unique_ptr<ConvertPCM16<int16_t>>,
+            std::unique_ptr<ConvertPCM16<int32_t>>>;
 
-        switch(bps)
+        ConversionType conversion;
+
+        switch(file->bps)
         {
             case 8:
             {
-                std::unique_ptr<ConvertPCM16<uint8_t>> conversion(new (std::nothrow) 
-                                ConvertPCM16<uint8_t>(GetNoiseReduce(), coef, samplesSize, rawsamples));
-                if (!conversion)
-			        throw std::runtime_error("Cannot create 8-bit sampling conversion");
-
-                convertedsamples = conversion->convert();
-                outsize = conversion->GetOutSize();
-
+                conversion = std::make_unique<ConvertPCM16<uint8_t>>(GetNoiseReduce(), coef, file->samplesSize, file->samples);
                 break;
             }
             case 16:
             {
-                std::unique_ptr<ConvertPCM16<int16_t>> conversion(new (std::nothrow) 
-                                ConvertPCM16<int16_t>(GetNoiseReduce(), coef, samplesSize, rawsamples));
-                if (!conversion)
-			        throw std::runtime_error("Cannot create 16-bit sampling conversion");
-                
-                convertedsamples = conversion->convert();
-                outsize = conversion->GetOutSize();
-
+                conversion = std::make_unique<ConvertPCM16<int16_t>>(GetNoiseReduce(), coef, file->samplesSize, file->samples);
                 break;
             }
             case 32:
             {
-                std::unique_ptr<ConvertPCM16<int32_t>> conversion(new (std::nothrow) 
-		                        ConvertPCM16<int32_t>(GetNoiseReduce(), coef, samplesSize, rawsamples));
-                if (!conversion)
-			        throw std::runtime_error("Cannot create 32-bit sampling conversion");  
-                
-                convertedsamples = conversion->convert();
-                outsize = conversion->GetOutSize(); 
-
+                conversion = std::make_unique<ConvertPCM16<int32_t>>(GetNoiseReduce(), coef, file->samplesSize, file->samples);
                 break;
             }
-
             default:
                 throw std::runtime_error("Unhandled bit rate or sample data type");
         }
+
+        std::tie(outsize, convertedsamplesptr) = std::visit([&](auto& conv) {
+            if (!conv)
+                throw std::runtime_error("Conversion pointer not created");
+            
+            return std::make_tuple<uint32_t, int16_t*>(conv->GetOutSize(), conv->convert());
+            
+            }, conversion);
 		
-        std::unique_ptr<VagFile> vagFile(new (std::nothrow) VagFile(sampleRate, channels, GetOutputFile()));
+        std::unique_ptr<VagFile> vagFile(new (std::nothrow) VagFile(file->sampleRate, file->channels, GetOutputFile()));
 
         if (!vagFile)
             throw std::runtime_error("Cannot create vagfile object");
+        
+		vagFile->CreateVagSamples(convertedsamplesptr, outsize, 0, 0, false);
 
-		vagFile->CreateVagSamples(convertedsamples, outsize, 0, 0, false);
+        std::cout << GetOutputFile() << std::endl;
 
 		vagFile->WriteVagFile(GetOutputFile());
     }

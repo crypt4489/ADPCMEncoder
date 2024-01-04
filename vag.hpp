@@ -94,7 +94,7 @@ struct vagfile_holder_t
         float _hist_1 = 0.0, _hist_2 = 0.0;
         float hist_1 = 0.0, hist_2 = 0.0;
 
-        int fullChunks = len * 0.035714;
+        int fullChunks = static_cast<int>(len * 0.035714);
         int remaining = len - (fullChunks * 28);
         constexpr uint32_t sizeOfWrite = 16;
         if (remaining)
