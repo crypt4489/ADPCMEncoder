@@ -100,7 +100,7 @@ public:
         uint64_t outsize{};
         
         using ConversionType = std::variant<std::unique_ptr<ConvertPCM16<uint8_t>>, std::unique_ptr<ConvertPCM16<int16_t>>,
-            std::unique_ptr<ConvertPCM16<int32_t>>>;
+            std::unique_ptr<ConvertPCM16<PCM24>>, std::unique_ptr<ConvertPCM16<int32_t>>>;
 
         ConversionType conversion;
 
@@ -116,6 +116,11 @@ public:
                 conversion = std::make_unique<ConvertPCM16<int16_t>>(GetNoiseReduce(), coef, file->samplesSize, file->samples);
                 break;
             }
+            case 24:
+            {
+                conversion = std::make_unique<ConvertPCM16<PCM24>>(GetNoiseReduce(), coef, file->samplesSize, file->samples);
+                break;
+            }
             case 32:
             {
                 conversion = std::make_unique<ConvertPCM16<int32_t>>(GetNoiseReduce(), coef, file->samplesSize, file->samples);
@@ -129,7 +134,7 @@ public:
             if (!conv)
                 throw std::runtime_error("Conversion pointer not created");
             
-            return std::make_tuple<uint32_t, int16_t*>(conv->GetOutSize(), conv->convert());
+            return std::make_tuple<uint64_t, int16_t*>(conv->GetOutSize(), conv->convert());
             
             }, conversion);
 		

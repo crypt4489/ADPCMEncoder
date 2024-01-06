@@ -80,7 +80,7 @@ protected:
 		}
 	}
 
-	virtual int16_t *convertwithfir()
+	int16_t *convertwithfir()
 	{
 		
 		for (int64_t i = (FIRSIZE-2) * bytesPerSample; i >= 0; i -= bytesPerSample)
@@ -88,7 +88,7 @@ protected:
 			outSamples.push_back(convertto16(i));
 		}
 
-		for (int64_t i = (FIRSIZE-1) * bytesPerSample; i < sampleSize - 1; i += bytesPerSample)
+		for (uint64_t i = (FIRSIZE-1) * bytesPerSample; i < sampleSize - 1; i += bytesPerSample)
 		{
 			T_SampleType sample = 0;
 
@@ -99,10 +99,11 @@ protected:
 			
 			outSamples.push_back(convertto16(sample));
 		}
+
 		return outSamples.data();
 	}
 
-	virtual int16_t *convertwithoutfir()
+	int16_t *convertwithoutfir()
 	{
 		uint64_t outIndex = outSize - 1;
 
@@ -206,63 +207,47 @@ public:
 	ConvertPCM16(bool _usefir,
 		std::vector<float> coef,
 		uint64_t inSize,
-		uint8_t* samples) : ConvertPCM16Data(_usefir, inSize, samples, 3, inSize / 2, coef) {}
+		uint8_t* samples) : ConvertPCM16Data(_usefir, inSize, samples, 3, inSize / 3, coef) {}
 
 	~ConvertPCM16() = default;
 
 protected:
 
-	int16_t* convertwithfir() override
-	{
-		/*
-
-		for (int64_t i = (FIRSIZE - 2) * bytesPerSample; i >= 0; i -= bytesPerSample)
-		{
-			outSamples.push_back(convertto16(i));
-		}
-
-		for (int64_t i = (FIRSIZE - 1) * bytesPerSample; i < sampleSize - 1; i += bytesPerSample)
-		{
-			PCM24 sample = 0;
-
-			for (int j = (FIRSIZE - 1) * bytesPerSample; j >= 0; j -= bytesPerSample)
-			{
-				sample += fir->CalculateNthSample(convertfirsample(i - j), j / bytesPerSample);
-			}
-
-			outSamples.push_back(convertto16(sample));
-		}
-		return outSamples.data();
-
-		*/
-	}
-
-	int16_t* convertwithoutfir() override
-	{
-		uint64_t outIndex = outSize - 1;
-
-		for (int64_t i = sampleSize - bytesPerSample; i >= 0; i -= bytesPerSample)
-		{
-			outSamples.push_back(convertto16(i));
-		}
-
-		return outSamples.data();
-	}
-
 
 	int16_t convertto16(int64_t index) override
 	{
-		return 0;
+		PCM24 ret = bytepacker24(index);
+		return convertto16(ret);
 	}
 
 	int16_t convertto16(PCM24 val) override
 	{
-		return 0;
+		constexpr uint32_t num = static_cast<uint32_t>(std::numeric_limits<int16_t>::max() - std::numeric_limits<int16_t>::min());
+
+		constexpr uint64_t denom = static_cast<uint64_t>(PCM24::INT24_MAX - PCM24::INT24_MIN);
+
+		int16_t output = num * static_cast<float>(val) / denom;
+
+		return output;
 	}
 
 	PCM24 convertfirsample(int64_t index) override
 	{
-		return PCM24();
+		return bytepacker24(index);
+	}
+private:
+
+	PCM24 bytepacker24(int64_t index)
+	{
+		int32_t lowerByte = static_cast<int32_t>(inSamples[index]);
+		int32_t middle1Byte = static_cast<int32_t>(inSamples[index + 1]) << 8;
+		int32_t topByte = static_cast<int32_t>(inSamples[index + 2]) << 16;
+		int32_t uppermost = 0;
+		
+		if (topByte & 0x00800000)
+			uppermost = 0xff000000;
+		
+		return PCM24(uppermost | topByte | middle1Byte | lowerByte);
 	}
 };
 

@@ -81,7 +81,7 @@ struct vagfile_holder_t
     void WriteVagFile(std::string name)
     {
         std::ofstream stream(name, std::ios::binary);
-        uint32_t size = samples.size();
+        size_t size = samples.size();
         stream.write(reinterpret_cast<char *>(&header), sizeof(VagFileHeader));
         char pad[16] = {0};
         stream.write(&pad[0], 16);
