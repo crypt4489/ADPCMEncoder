@@ -125,7 +125,7 @@ public:
                 throw std::runtime_error("Unhandled bit rate or sample data type");
         }
 
-        std::tie(outsize, convertedsamplesptr) = std::visit([&](auto& conv) {
+        std::tie(outsize, convertedsamplesptr) = std::visit([](auto& conv) {
             if (!conv)
                 throw std::runtime_error("Conversion pointer not created");
             
