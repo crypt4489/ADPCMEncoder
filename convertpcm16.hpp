@@ -6,6 +6,8 @@
 #include <limits>
 #include <vector>
 
+#include "pcm24.hpp"
+
 template <int N, typename T_SampleType>
 struct FIR
 {
@@ -43,6 +45,13 @@ public:
 		}
 	}
 
+	virtual ~ConvertPCM16Data()
+	{
+		if (fir)
+			delete fir;
+
+	}
+
 protected:
 	static constexpr int FIRSIZE = 4;
 	
@@ -71,14 +80,7 @@ protected:
 		}
 	}
 
-	virtual ~ConvertPCM16Data()
-	{
-		if (fir)
-			delete fir;
-	
-	}
-
-	int16_t *convertwithfir()
+	virtual int16_t *convertwithfir()
 	{
 		
 		for (int64_t i = (FIRSIZE-2) * bytesPerSample; i >= 0; i -= bytesPerSample)
@@ -100,7 +102,7 @@ protected:
 		return outSamples.data();
 	}
 
-	int16_t *convertwithoutfir()
+	virtual int16_t *convertwithoutfir()
 	{
 		uint64_t outIndex = outSize - 1;
 
@@ -118,10 +120,14 @@ protected:
 };
 
 template <typename T_SampleType>
-class ConvertPCM16 : private ConvertPCM16Data<T_SampleType>
+class ConvertPCM16 : public ConvertPCM16Data<T_SampleType>
 {
 public:
 	ConvertPCM16() = delete;
+	ConvertPCM16(bool _usefir,
+		std::vector<float> coef,
+		uint64_t inSize,
+		uint8_t* samples) = delete;
 	~ConvertPCM16() = delete;
 	int16_t *convert() override { return nullptr; }
 
@@ -191,6 +197,77 @@ protected:
 	}
 };
 
+
+template <>
+class ConvertPCM16<PCM24> : public ConvertPCM16Data<PCM24>
+{
+public:
+	ConvertPCM16() = delete;
+	ConvertPCM16(bool _usefir,
+		std::vector<float> coef,
+		uint64_t inSize,
+		uint8_t* samples) : ConvertPCM16Data(_usefir, inSize, samples, 3, inSize / 2, coef) {}
+
+	~ConvertPCM16() = default;
+
+protected:
+
+	int16_t* convertwithfir() override
+	{
+		/*
+
+		for (int64_t i = (FIRSIZE - 2) * bytesPerSample; i >= 0; i -= bytesPerSample)
+		{
+			outSamples.push_back(convertto16(i));
+		}
+
+		for (int64_t i = (FIRSIZE - 1) * bytesPerSample; i < sampleSize - 1; i += bytesPerSample)
+		{
+			PCM24 sample = 0;
+
+			for (int j = (FIRSIZE - 1) * bytesPerSample; j >= 0; j -= bytesPerSample)
+			{
+				sample += fir->CalculateNthSample(convertfirsample(i - j), j / bytesPerSample);
+			}
+
+			outSamples.push_back(convertto16(sample));
+		}
+		return outSamples.data();
+
+		*/
+	}
+
+	int16_t* convertwithoutfir() override
+	{
+		uint64_t outIndex = outSize - 1;
+
+		for (int64_t i = sampleSize - bytesPerSample; i >= 0; i -= bytesPerSample)
+		{
+			outSamples.push_back(convertto16(i));
+		}
+
+		return outSamples.data();
+	}
+
+
+	int16_t convertto16(int64_t index) override
+	{
+		return 0;
+	}
+
+	int16_t convertto16(PCM24 val) override
+	{
+		return 0;
+	}
+
+	PCM24 convertfirsample(int64_t index) override
+	{
+		return PCM24();
+	}
+};
+
+
+
 template <>
 class ConvertPCM16<int32_t> : public ConvertPCM16Data<int32_t>
 {
@@ -232,10 +309,10 @@ private:
 
 	int32_t bytepacker32(int64_t index)
 	{
-		int32_t lowerByte = (int32_t)inSamples[index];
-		int32_t middle1Byte = ((int32_t)inSamples[index + 1]) << 8;
-		int32_t middle2Byte = ((int32_t)inSamples[index + 2]) << 16;
-		int32_t topByte = ((int32_t)inSamples[index + 3]) << 24;
+		int32_t lowerByte = static_cast<int32_t>(inSamples[index]);
+		int32_t middle1Byte = static_cast<int32_t>(inSamples[index + 1]) << 8;
+		int32_t middle2Byte = static_cast<int32_t>(inSamples[index + 2]) << 16;
+		int32_t topByte = static_cast<int32_t>(inSamples[index + 3]) << 24;;
 		return (topByte | middle2Byte | middle1Byte | lowerByte);
 	}
 };

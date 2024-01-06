@@ -53,9 +53,7 @@ private:
         std::ifstream filehandle(name, std::ios::binary | std::ios::ate);
 
         if (!filehandle.is_open())
-        {
             throw std::runtime_error("WAV file is unable to be opened");
-        }
 
         filehandle.seekg(0, std::ios_base::end);
 
@@ -78,13 +76,9 @@ private:
         std::string data(buffer, buffer + 4);
         
         if (data == "data")
-        {
             std::copy(data.begin(), data.end(), &header.data_tag[0]);
-        }
         else
-        {
              throw std::runtime_error("WAV file does not have DATA tag");   
-        }
 
         buffer += 4;
 
@@ -97,9 +91,7 @@ private:
         samples = new (std::nothrow) uint8_t[dataSize];
 
         if (!samples)
-        {
-            throw std::runtime_error("Unable to create samples buffer");
-        }
+            throw std::runtime_error("Unable to create WAV samples buffer");
 
         std::copy(buffer, buffer + dataSize, samples);
 
