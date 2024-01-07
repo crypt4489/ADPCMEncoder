@@ -142,6 +142,7 @@ template <>
 class ConvertPCM16<uint8_t> : public ConvertPCM16Data<uint8_t>
 {
 public:
+
 	ConvertPCM16() = delete;
 	ConvertPCM16(bool _usefir,
 				 std::vector<float> coef,
@@ -151,6 +152,7 @@ public:
 	~ConvertPCM16() = default;
 
 protected:
+
 	int16_t convertto16(int64_t index) override
 	{
 		return static_cast<int16_t>(inSamples[index] - 0x80) << 8;
@@ -171,6 +173,7 @@ template <>
 class ConvertPCM16<int16_t> : public ConvertPCM16Data<int16_t>
 {
 public:
+
 	ConvertPCM16() = delete;
 	ConvertPCM16(bool _usefir,
 				 std::vector<float> coef,
@@ -180,6 +183,7 @@ public:
 	~ConvertPCM16() = default;
 
 protected:
+
 	int16_t convertto16(int64_t index) override
 	{
 		int16_t lowerByte = (int16_t)inSamples[index];
@@ -203,6 +207,7 @@ template <>
 class ConvertPCM16<PCM24> : public ConvertPCM16Data<PCM24>
 {
 public:
+
 	ConvertPCM16() = delete;
 	ConvertPCM16(bool _usefir,
 		std::vector<float> coef,
@@ -212,7 +217,6 @@ public:
 	~ConvertPCM16() = default;
 
 protected:
-
 
 	int16_t convertto16(int64_t index) override
 	{
@@ -224,7 +228,7 @@ protected:
 	{
 		constexpr uint32_t num = static_cast<uint32_t>(std::numeric_limits<int16_t>::max() - std::numeric_limits<int16_t>::min());
 
-		constexpr uint64_t denom = static_cast<uint64_t>(PCM24::INT24_MAX - PCM24::INT24_MIN);
+		constexpr uint32_t denom = static_cast<uint32_t>(PCM24::INT24_MAX - PCM24::INT24_MIN);
 
 		int16_t output = num * static_cast<float>(val) / denom;
 
@@ -235,19 +239,20 @@ protected:
 	{
 		return bytepacker24(index);
 	}
+
 private:
 
 	PCM24 bytepacker24(int64_t index)
 	{
 		int32_t lowerByte = static_cast<int32_t>(inSamples[index]);
-		int32_t middle1Byte = static_cast<int32_t>(inSamples[index + 1]) << 8;
+		int32_t middleByte = static_cast<int32_t>(inSamples[index + 1]) << 8;
 		int32_t topByte = static_cast<int32_t>(inSamples[index + 2]) << 16;
-		int32_t uppermost = 0;
+		int32_t excess = 0;
 		
 		if (topByte & 0x00800000)
-			uppermost = 0xff000000;
+			excess = 0xff000000;
 		
-		return PCM24(uppermost | topByte | middle1Byte | lowerByte);
+		return PCM24(excess | topByte | middleByte | lowerByte);
 	}
 };
 

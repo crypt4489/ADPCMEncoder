@@ -5,8 +5,8 @@
 class PCM24
 {
 public:
-	static constexpr int INT24_MIN = -8388608;
-	static constexpr int INT24_MAX = 8388607;
+	static constexpr int32_t INT24_MIN = -8388608;
+	static constexpr int32_t INT24_MAX = 8388607;
 	int32_t integerval;
 	
 	PCM24() = default;

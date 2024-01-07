@@ -91,7 +91,10 @@ private:
         samples = new (std::nothrow) uint8_t[dataSize];
 
         if (!samples)
-            throw std::runtime_error("Unable to create WAV samples buffer");
+        {   
+            std::cerr << "Unable to create WAV samples buffer\n";
+            throw std::bad_alloc();
+        }
 
         std::copy(buffer, buffer + dataSize, samples);
 

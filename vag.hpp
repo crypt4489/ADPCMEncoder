@@ -65,7 +65,7 @@ struct vagfile_holder_t
     struct vagfile_header_t header{};
     std::vector<uint8_t> samples;
 
-    vagfile_holder_t(uint32_t sampleRate, uint8_t channels, std::string filename)
+    vagfile_holder_t(uint32_t sampleRate, uint16_t channels, std::string filename)
     {
         header.magic[0] = 'V';
         header.magic[1] = 'A';
@@ -109,7 +109,7 @@ struct vagfile_holder_t
 
         samples.resize(sizeOfOut);
 
-        std::vector<uint8_t>::iterator outBuffer = samples.begin();
+        auto outBuffer = samples.begin();
 
         uint32_t bytesRead = 0;
         EncBlock block{0, 0, 0, {0}};
@@ -167,7 +167,7 @@ struct vagfile_holder_t
                     break;
                 }
             }
-            // printf("%f %f\n", s_1, s_2);
+            
             _hist_1 = s_1;
             _hist_2 = s_2;
 
@@ -177,7 +177,7 @@ struct vagfile_holder_t
                 d_samples[i] = predictBuf[i][predict];
             }
 
-            int min2 = (int)min;
+            int min2 = static_cast<int>(min);
             int shift_mask = 0x4000;
             shift = 0;
 
@@ -206,7 +206,6 @@ struct vagfile_holder_t
                     if (i == loopEnd)
                     {
                         block.flags = VAGF_LOOP_END;
-                        // quitAtTheNextIteration = true;
                     }
                 }
             }

@@ -36,8 +36,13 @@ public:
     programtype(false),
     usehelp(false),
     type(UNKNOWNTYPE),
-    filepathregex(new std::regex("[\\:A-Za-z0-9 _\\-/\\\\.]*\\.[A-Za-z0-9]+$"))
+    filepathregex(new (std::nothrow) std::regex("[\\:A-Za-z0-9 _\\-/\\\\.]*\\.[A-Za-z0-9]+$"))
     {
+        if (!filepathregex)
+        {
+            std::cerr << "Filepath regex cannot allocate\n";
+            throw std::bad_alloc();
+        }
 
         if (!ParseArguments(argc, argv))
         {
