@@ -27,6 +27,9 @@ public:
         WAVTYPE = 2
     };
 
+    using ConversionType = std::variant<std::unique_ptr<ConvertPCM16<uint8_t>>, std::unique_ptr<ConvertPCM16<int16_t>>,
+        std::unique_ptr<ConvertPCM16<PCM24>>, std::unique_ptr<ConvertPCM16<int32_t>>>;
+
     Program() = delete;
     Program(const Program&) = delete;
     Program(const Program&&) = delete;
@@ -86,7 +89,7 @@ public:
         {
             case WAVTYPE:
             {
-                file =  std::make_unique<WavFile>(GetFilePath()) ;
+                file =  std::make_unique<WavFile>(GetFilePath());
 
 		        if (!file)
 			        throw std::runtime_error("Cannot create WAV file");
@@ -103,9 +106,6 @@ public:
 
         int16_t* convertedsamplesptr{};
         uint64_t outsize{};
-        
-        using ConversionType = std::variant<std::unique_ptr<ConvertPCM16<uint8_t>>, std::unique_ptr<ConvertPCM16<int16_t>>,
-            std::unique_ptr<ConvertPCM16<PCM24>>, std::unique_ptr<ConvertPCM16<int32_t>>>;
 
         ConversionType conversion;
 
@@ -113,22 +113,22 @@ public:
         {
             case 8:
             {
-                conversion = std::make_unique<ConvertPCM16<uint8_t>>(GetNoiseReduce(), coef, file->samplesSize, file->samples);
+                conversion = std::make_unique<ConvertPCM16<uint8_t>>(noisereduce, coef, file->samplesSize, file->samples);
                 break;
             }
             case 16:
             {
-                conversion = std::make_unique<ConvertPCM16<int16_t>>(GetNoiseReduce(), coef, file->samplesSize, file->samples);
+                conversion = std::make_unique<ConvertPCM16<int16_t>>(noisereduce, coef, file->samplesSize, file->samples);
                 break;
             }
             case 24:
             {
-                conversion = std::make_unique<ConvertPCM16<PCM24>>(GetNoiseReduce(), coef, file->samplesSize, file->samples);
+                conversion = std::make_unique<ConvertPCM16<PCM24>>(noisereduce, coef, file->samplesSize, file->samples);
                 break;
             }
             case 32:
             {
-                conversion = std::make_unique<ConvertPCM16<int32_t>>(GetNoiseReduce(), coef, file->samplesSize, file->samples);
+                conversion = std::make_unique<ConvertPCM16<int32_t>>(noisereduce, coef, file->samplesSize, file->samples);
                 break;
             }
             default:
@@ -143,6 +143,8 @@ public:
             
             }, conversion);
 		
+        std::cout << GetOutputFile() << std::endl;
+
         std::unique_ptr<VagFile> vagFile(new (std::nothrow) VagFile(file->sampleRate, file->channels, GetOutputFile()));
 
         if (!vagFile)
@@ -150,9 +152,7 @@ public:
         
 		vagFile->CreateVagSamples(convertedsamplesptr, outsize, 0, 0, false);
 
-        std::cout << GetOutputFile() << std::endl;
-
-		vagFile->WriteVagFile(GetOutputFile());
+		vagFile->WriteVagFile();
     }
 
 private:

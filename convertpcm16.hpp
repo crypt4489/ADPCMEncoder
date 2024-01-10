@@ -77,6 +77,11 @@ protected:
 		if (usefir)
 		{
 			fir = new (std::nothrow) FIR<FIRSIZE, T_SampleType>(coef);
+			if (!fir)
+			{
+				std::cerr << "Cannot allocate FIR sampling class\n";
+				throw std::bad_alloc();
+			}
 		}
 	}
 
