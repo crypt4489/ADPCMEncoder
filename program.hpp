@@ -288,15 +288,15 @@ private:
 
     void PrintHelp()
     {
-        std::cout << "\nADPCMEncoder - an application for Sony PS2 VAG file encoding/decoding\n\n";
-        std::cout << "Usage: ADPCMEncoder [OPTIONS] [FILENAME]\n\n";
-        std::cout << "Options:\n\n";
-        std::cout << "-h, --help                    Use cmdline help\n\n"; 
-        std::cout << "-d, --decode                  Decode a valid VAG file (encode is default)\n\n";  
-        std::cout << "-nf, --no-fir                 Don't use FIR sampling for noise (FIR usage is default)\n\n";
-        std::cout << "-o=[FILE], --output=[FILE]    Output file name (Input file name is default)\n\n";
-        std::cout << "All Options are case insensitive for alpha characters\n\n"; 
-        std::cout << "Filename:\n\n";
-        std::cout << "ADPCMEncoder accepts WAV files\n\n";  
+        std::cout << "\nADPCMEncoder - an application for Sony PS2 VAG file encoding/decoding\n\n"
+            << "Usage: ADPCMEncoder [OPTIONS] [FILENAME]\n\n"
+            << "Options:\n\n"
+            << "-h, --help                    Use cmdline help\n\n"
+            << "-d, --decode                  Decode a valid VAG file (encode is default)\n\n"
+            << "-nf, --no-fir                 Don't use FIR sampling for noise (FIR usage is default)\n\n"
+            << "-o=[FILE], --output=[FILE]    Output file name (Input file name is default)\n\n"
+            << "All Options are case insensitive for alpha characters\n\n"
+            << "Filename:\n\n"
+            << "ADPCMEncoder accepts WAV files\n\n";
     }
 };
