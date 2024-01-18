@@ -187,16 +187,18 @@ private:
                 return false;
             }
             
-            if (tolowercase(it) == "-d" || tolowercase(it) == "--decode")
+            std::string param = tolowercase(it);
+            
+            if (param == "-d" || param == "--decode")
                 programtype = true;
-            else if (tolowercase(it) == "-nf" || tolowercase(it) == "--nofir")
+            else if (param == "-nf" || param == "--nofir")
                 noisereduce = false;
-            else if (tolowercase(it) == "-h" || tolowercase(it) == "--help")
+            else if (param == "-h" || param == "--help")
             {
                 usehelp = true;
                 return true;
             }
-            else if (tolowercase(it.substr(0, 2)) == "-o" || tolowercase(it.substr(0, 8)) == "--output")
+            else if (param.substr(0, 2) == "-o" || param.substr(0, 8) == "--output")
             {
                 if (!ParseOutputFile(it))
                     return false;
