@@ -1,30 +1,28 @@
-
-OBJS_DIR := ./objs
-INC_DIR := ./
+objs_dir := ./objs
+inc_dir := ./
 
 # Define source files and object files
-SRC_CPP := $(shell find . -type f -name '*.cpp')
-objs := $(patsubst ./%, $(OBJS_DIR)/%, $(SRC_CPP:%.cpp=%.o))
+src_cpp := $(shell find . -maxdepth 1 -type f -name '*.cpp')
+objs := $(patsubst ./%, $(objs_dir)/%, $(src_cpp:%.cpp=%.o))
 
 # Define target
 target := ADPCMEncoder
 
 build_type ?= DEBUG
 
-incflags := -I$(INC_DIR)
+incflags := -I$(inc_dir)
 
 # Compiler and flags
-CXX := g++
+cxx := g++
 cppflags := -std=c++17 -Wall
 
 ifeq ($(build_type), RELEASE)
-	cppflags += -O3
+    cppflags += -O3
 endif
 
 # Build rule for object files
-$(OBJS_DIR)/%.o: %.cpp
-	$(CXX) $(cppflags) $(incflags) -c -o $@ $^
-
+$(objs_dir)/%.o: %.cpp
+    $(cxx) $(cppflags) $(incflags) -c -o $@ $^
 
 .PHONY : all clean compile directories
 
@@ -32,14 +30,14 @@ $(OBJS_DIR)/%.o: %.cpp
 all: directories compile
 
 compile:
-	make $(target)
+    make $(target)
 
 directories:
-	if [ ! -d $(OBJS_DIR) ]; then mkdir -p $(OBJS_DIR) ; fi
+    if [ ! -d $(objs_dir) ]; then mkdir -p $(objs_dir) ; fi
 
 $(target): $(objs)
-	$(CXX) -o $@ $^
+    $(cxx) -o $@ $^
 
 # Clean rule
 clean:
-	rm -rf $(objs) $(target) $(OBJS_DIR)/*.o
+    rm -rf $(objs) $(target) $(objs_dir)/*.o
