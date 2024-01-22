@@ -131,8 +131,9 @@
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="aiff.hpp" />
     <ClInclude Include="convertpcm16.hpp" />
-    <ClInclude Include="file.h" />
+    <ClInclude Include="file.hpp" />
     <ClInclude Include="pcm24.hpp" />
     <ClInclude Include="program.hpp" />
     <ClInclude Include="vag.hpp" />

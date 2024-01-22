@@ -11,7 +11,7 @@
 #include <variant>
 #include <vector>
 
-#include "file.h"
+#include "file.hpp"
 #include "wav.hpp"
 #include "vag.hpp"
 #include "convertpcm16.hpp"
@@ -28,7 +28,7 @@ public:
     };
 
     using ConversionType = std::variant<std::unique_ptr<ConvertPCM16<uint8_t>>, std::unique_ptr<ConvertPCM16<int16_t>>,
-        std::unique_ptr<ConvertPCM16<PCM24>>, std::unique_ptr<ConvertPCM16<int32_t>>>;
+        std::unique_ptr<ConvertPCM16<PCM24>>, std::unique_ptr<ConvertPCM16<int32_t>>, std::unique_ptr<ConvertPCM16<float>>, std::unique_ptr<ConvertPCM16<double>>>;
 
     Program() = delete;
     Program(const Program&) = delete;
@@ -80,79 +80,14 @@ public:
             PrintHelp();
             return;
         }
-
-        std::vector<float> coef = {.15f, .15f, .15f, .15f};
-
-        std::unique_ptr<File> file;
-            
-        switch(type)
+        if (!programtype)
         {
-            case WAVTYPE:
-            {
-                file =  std::make_unique<WavFile>(GetFilePath());
-
-		        if (!file)
-			        throw std::runtime_error("Cannot create WAV file");
-
-                break;
-            }
-            default:
-                throw std::runtime_error("Invalid file type");
+            ExecuteEncode();
         }
-
-		std::cout << file->samplesSize << " " 
-					<< file->channels << " "
-					<< file->sampleRate << " " << file->bps << "\n";
-
-        int16_t* convertedsamplesptr{};
-        uint64_t outsize{};
-
-        ConversionType conversion;
-
-        switch(file->bps)
+        else
         {
-            case 8:
-            {
-                conversion = std::make_unique<ConvertPCM16<uint8_t>>(noisereduce, coef, file->samplesSize, file->samples);
-                break;
-            }
-            case 16:
-            {
-                conversion = std::make_unique<ConvertPCM16<int16_t>>(noisereduce, coef, file->samplesSize, file->samples);
-                break;
-            }
-            case 24:
-            {
-                conversion = std::make_unique<ConvertPCM16<PCM24>>(noisereduce, coef, file->samplesSize, file->samples);
-                break;
-            }
-            case 32:
-            {
-                conversion = std::make_unique<ConvertPCM16<int32_t>>(noisereduce, coef, file->samplesSize, file->samples);
-                break;
-            }
-            default:
-                throw std::runtime_error("Unhandled bit rate or sample data type");
+
         }
-
-        std::tie(outsize, convertedsamplesptr) = std::visit([](auto& conv) {
-            if (!conv)
-                throw std::runtime_error("Conversion pointer not created");
-            
-            return std::make_tuple<uint64_t, int16_t*>(conv->GetOutSize(), conv->convert());
-            
-            }, conversion);
-		
-        std::cout << GetOutputFile() << std::endl;
-
-        std::unique_ptr<VagFile> vagFile(new (std::nothrow) VagFile(file->sampleRate, file->channels, GetOutputFile()));
-
-        if (!vagFile)
-            throw std::runtime_error("Cannot create vagfile object");
-        
-		vagFile->CreateVagSamples(convertedsamplesptr, outsize, 0, 0, false);
-
-		vagFile->WriteVagFile();
     }
 
 private:
@@ -215,6 +150,12 @@ private:
         if (filename.empty() || filepath.empty() || type == UNKNOWNTYPE)
         {
             std::cerr << "No input file found" << "\n";
+            return false;
+        }
+
+        if (programtype && (outputfile.empty() || type == UNKNOWNTYPE))
+        {
+            std::cerr << "No output file given for decoding\n";
             return false;
         }
 
@@ -283,7 +224,115 @@ private:
             std::cerr << "Incorrect extension, should be .vag, not " << arg.substr(arg.size()-4) << "\n";
             return false;
         }
+
+        if (programtype)
+        {
+            split = outputfile.rfind("=");
+
+            if (split == std::string::npos)
+            {
+                std::cerr << "Incorrect output argument format " << arg << " missing = delimiter\n";
+                return false;
+            }
+
+            auto typesearch = filetypemap.find(outputfile.substr(split + 1));
+
+            if (typesearch == filetypemap.end())
+            {
+                std::cerr << "Unsupported file type extension" << "\n";
+                return false;
+            }
+
+            type = typesearch->second;
+        }
+
+
         return true;
+    }
+
+    void ExecuteEncode()
+    {
+        std::vector<float> coef = { .15f, .15f, .15f, .15f };
+
+        std::unique_ptr<File> file;
+
+        switch (type)
+        {
+        case WAVTYPE:
+        {
+            file = std::make_unique<WavFile>(GetFilePath());
+
+            if (!file)
+                throw std::runtime_error("Cannot create WAV file");
+
+            break;
+        }
+        default:
+            throw std::runtime_error("Invalid file type");
+        }
+
+        std::cout << file->samplesSize << " "
+            << file->channels << " "
+            << file->sampleRate << " " << file->bps << "\n";
+
+        int16_t* convertedsamplesptr{};
+        uint64_t outsize{};
+
+        ConversionType conversion;
+
+        switch (file->bps)
+        {
+        case 8:
+        {
+            conversion = std::make_unique<ConvertPCM16<uint8_t>>(noisereduce, coef, file->samplesSize, file->samples);
+            break;
+        }
+        case 16:
+        {
+            conversion = std::make_unique<ConvertPCM16<int16_t>>(noisereduce, coef, file->samplesSize, file->samples);
+            break;
+        }
+        case 24:
+        {
+            conversion = std::make_unique<ConvertPCM16<PCM24>>(noisereduce, coef, file->samplesSize, file->samples);
+            break;
+        }
+        case 32:
+        {
+            if (file->isfloat)
+                conversion = std::make_unique<ConvertPCM16<float>>(noisereduce, coef, file->samplesSize, file->samples);
+            else
+                conversion = std::make_unique<ConvertPCM16<int32_t>>(noisereduce, coef, file->samplesSize, file->samples);
+            break;
+        }
+        case 64:
+        {
+            if (file->isfloat)
+                conversion = std::make_unique<ConvertPCM16<double>>(noisereduce, coef, file->samplesSize, file->samples);
+            break;
+        }
+        default:
+            throw std::runtime_error("Unhandled bit rate or sample data type");
+        }
+
+        std::tie(outsize, convertedsamplesptr) = std::visit([](auto& conv) {
+            if (!conv)
+                throw std::runtime_error("Conversion pointer not created");
+
+            return std::make_tuple<uint64_t, int16_t*>(conv->GetOutSize(), conv->convert());
+
+            }, conversion);
+
+        std::cout << GetOutputFile() << std::endl;
+
+        std::unique_ptr<VagFile> vagFile(new (std::nothrow) VagFile(file->sampleRate, file->channels, GetOutputFile()));
+
+        if (!vagFile)
+            throw std::runtime_error("Cannot create vagfile object");
+
+        vagFile->CreateVagSamples(convertedsamplesptr, outsize, 0, 0, false);
+
+        vagFile->WriteVagFile();
     }
 
     void PrintHelp()

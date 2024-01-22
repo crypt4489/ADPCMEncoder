@@ -258,11 +258,10 @@ struct vagfile_holder_t
 
         if (!loopFlag)
         {
-            EncBlock block{0, 0, VAGF_PLAYBACK_END, {0}};
             *outBuffer++ = 0;
-            *outBuffer++ = block.flags;
+            *outBuffer++ = VAGF_PLAYBACK_END;
             for (int h = 0; h < 14; h++)
-                *outBuffer++ = block.sample[h];
+                *outBuffer++ = 0;
         }
 
         header.dataLength = BYTESWAP(samples.size());

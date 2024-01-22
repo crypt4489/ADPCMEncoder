@@ -32,10 +32,13 @@
     <ClInclude Include="wav.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="file.h">
+    <ClInclude Include="file.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="pcm24.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="aiff.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

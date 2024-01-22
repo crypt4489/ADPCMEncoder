@@ -1,15 +1,11 @@
 #pragma once
 
 #include <algorithm>
-#include <cstdint>
-#include <fstream>
 #include <iostream>
 #include <iterator>
 #include <memory>
-#include <string>
-#include <vector>
 
-#include "file.h"
+#include "file.hpp"
 struct wavfile_header_t;
 typedef struct wavfile_header_t WavFileHeader;
 struct wavfile_holder_t;
@@ -47,25 +43,20 @@ struct wavfile_holder_t : public File
             delete[] samples;
     };
 
+    enum AudioFormatCode
+    {
+        PCM = 1,
+        MSADPCM = 2,
+        Float = 3,
+        ALaw = 6,
+        ULaw = 7,
+        Extensible = 0xFFFE
+    };
+
 private:
     void LoadWavFile(std::string name)
     {
-        std::ifstream filehandle(name, std::ios::binary | std::ios::ate);
-
-        if (!filehandle.is_open())
-            throw std::runtime_error("WAV file is unable to be opened");
-
-        filehandle.seekg(0, std::ios_base::end);
-
-        std::streampos filesize = filehandle.tellg();
-
-        std::vector<uint8_t> filedata(filesize);
-
-        filehandle.seekg(0, std::ios_base::beg);
-
-        filehandle.read(reinterpret_cast<char *>(filedata.data()), filesize);
-
-        filehandle.close();
+        auto filedata = LoadFile(name);
 
         std::vector<uint8_t>::iterator buffer = filedata.begin();
 
@@ -102,5 +93,26 @@ private:
         sampleRate = header.sample_rate;
         samplesSize = dataSize;
         bps = header.bits_per_sample;
+
+        switch (header.audio_format)
+        {
+            case PCM:
+                break;
+            case MSADPCM:
+                break;
+            case Float:
+                isfloat = true;
+                break;
+            case ALaw:
+                a_law_decompression();
+                break;
+            case ULaw:
+                u_law_decompression();
+                break;
+            case Extensible:
+                break;
+            default:
+                break;
+        }
     }
 };

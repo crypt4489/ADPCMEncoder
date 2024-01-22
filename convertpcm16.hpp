@@ -304,10 +304,124 @@ private:
 
 	int32_t bytepacker32(int64_t index)
 	{
-		int32_t lowerByte = static_cast<int32_t>(inSamples[index]);
-		int32_t middle1Byte = static_cast<int32_t>(inSamples[index + 1]) << 8;
-		int32_t middle2Byte = static_cast<int32_t>(inSamples[index + 2]) << 16;
-		int32_t topByte = static_cast<int32_t>(inSamples[index + 3]) << 24;;
-		return (topByte | middle2Byte | middle1Byte | lowerByte);
+		int32_t out = 0;
+		for (int i = 0; i < bytesPerSample; i++)
+		{
+			out |= static_cast<int32_t>(inSamples[index + i]) << (8 * i);
+		}
+		return out;
 	}
 };
+
+template <>
+class ConvertPCM16<float> : public ConvertPCM16Data<float>
+{
+public:
+
+	ConvertPCM16() = delete;
+	ConvertPCM16(bool _usefir,
+		std::vector<float> coef,
+		uint32_t inSize,
+		uint8_t* samples) : ConvertPCM16Data(_usefir, inSize, samples, 4, inSize >> 2, coef) {}
+
+	~ConvertPCM16() = default;
+
+protected:
+
+	int16_t convertto16(int64_t index) override
+	{
+		float ret = bytepacker32(index);
+		return convertto16(ret);
+	}
+
+	int16_t convertto16(float val) override
+	{
+		constexpr uint32_t num = std::numeric_limits<int16_t>::max();
+
+		int16_t output = num * val;
+
+		//std::cout << output << std::endl;
+
+		return output;
+	}
+
+	float convertfirsample(int64_t index) override
+	{
+		return bytepacker32(index);
+	}
+
+private:
+
+	float bytepacker32(int64_t index)
+	{
+		union int2flt
+		{
+			float val;
+			int32_t intVal;
+		};
+
+		int2flt out{ 0 };
+		for (int i = 0; i < bytesPerSample; i++)
+		{
+			out.intVal |= static_cast<int32_t>(inSamples[index + i]) << (8 * i);
+		}
+		return out.val;
+	}
+};
+
+template <>
+class ConvertPCM16<double> : public ConvertPCM16Data<double>
+{
+public:
+
+	ConvertPCM16() = delete;
+	ConvertPCM16(bool _usefir,
+		std::vector<float> coef,
+		uint32_t inSize,
+		uint8_t* samples) : ConvertPCM16Data(_usefir, inSize, samples, 8, inSize >> 3, coef) {}
+
+	~ConvertPCM16() = default;
+
+protected:
+
+	int16_t convertto16(int64_t index) override
+	{
+		double ret = bytepacker64(index);
+		return convertto16(ret);
+	}
+
+	int16_t convertto16(double val) override
+	{
+		constexpr uint32_t num = std::numeric_limits<int16_t>::max();
+
+		int16_t output = num * val;
+
+		return output;
+	}
+
+	double convertfirsample(int64_t index) override
+	{
+		return bytepacker64(index);
+	}
+
+private:
+
+	double bytepacker64(int64_t index)
+	{
+		union int2dbl
+		{
+			double val;
+			int64_t intVal;
+		};
+
+		int2dbl out{ 0 };
+		
+		for (int i = 0; i < bytesPerSample; i++)
+		{
+			out.intVal |= static_cast<int64_t>(inSamples[index + i]) << (8 * i);
+		}
+
+		return out.val;
+	}
+};
+
