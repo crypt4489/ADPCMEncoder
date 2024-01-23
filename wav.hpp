@@ -37,11 +37,7 @@ struct wavfile_holder_t : public File
         LoadWavFile(name);
     }
 
-    ~wavfile_holder_t()
-    {
-        if (samples)
-            delete[] samples;
-    };
+    ~wavfile_holder_t() = default;
 
     enum AudioFormatCode
     {

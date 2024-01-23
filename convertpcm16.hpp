@@ -62,16 +62,18 @@ protected:
 	uint8_t *inSamples;
 	uint8_t bytesPerSample;
 	uint64_t outSize;
+	uint16_t channels;
 	std::vector<int16_t>outSamples;
 	std::vector<T_SampleType>convertSamples;
 
 	ConvertPCM16Data(bool _use, uint64_t inSize, uint8_t *samples, 
-	uint8_t bps, uint64_t _outSize, std::vector<float> coef) : 
+	uint8_t bps, uint64_t _outSize, uint16_t channels, std::vector<float> coef) : 
 	usefir(_use),												  
 	sampleSize(inSize),
 	inSamples(samples),
 	bytesPerSample(bps),
-	outSize(_outSize)
+	outSize(_outSize),
+	channels(channels)
 
 	{
 		if (usefir)
@@ -105,6 +107,11 @@ protected:
 			outSamples.push_back(convertto16(sample));
 		}
 
+		if (channels == 2)
+		{
+			resample();
+		}
+
 		return outSamples.data();
 	}
 
@@ -117,12 +124,39 @@ protected:
 			outSamples.push_back (convertto16(i));
 		}
 
+		if (channels == 2)
+		{
+			resample();
+		}
+
 		return outSamples.data();
 	}
 
-	virtual int16_t convertto16(int64_t index) = 0;
+	void resample()
+	{
+		std::vector<int16_t> resampled;
+		for (int i = 0; i < outSize; i += 2)
+		{
+			resampled.push_back((outSamples[i] + outSamples[i + 1]) / 2);
+		}
+		outSize = resampled.size();
+		outSamples.swap(resampled);
+	}
+
+	virtual int16_t convertto16(int64_t index)
+	{
+		T_SampleType ret = bytepacker(index);
+		return convertto16(ret);
+	}
+
 	virtual int16_t convertto16(T_SampleType val) = 0;
-	virtual T_SampleType convertfirsample(int64_t index) = 0;
+
+	virtual T_SampleType convertfirsample(int64_t index)
+	{
+		return bytepacker(index);
+	}
+
+	virtual T_SampleType bytepacker(int64_t index) = 0;
 };
 
 template <typename T_SampleType>
@@ -141,6 +175,7 @@ protected:
 	int16_t convertto16(int64_t index) { return 0; }
 	int16_t convertto16(T_SampleType val) { return 0; }
 	T_SampleType convertfirsample(int64_t index) { return 0; }
+	T_SampleType bytepacker(int64_t index) { return 0;  }
 };
 
 template <>
@@ -152,7 +187,7 @@ public:
 	ConvertPCM16(bool _usefir,
 				 std::vector<float> coef,
 				 uint64_t inSize,
-				 uint8_t *samples) : ConvertPCM16Data(_usefir, inSize, samples, 1, inSize, coef) {}
+				 uint8_t *samples, uint16_t channels) : ConvertPCM16Data(_usefir, inSize, samples, 1, channels, inSize, coef) {}
 
 	~ConvertPCM16() = default;
 
@@ -172,6 +207,12 @@ protected:
 	{
 		return inSamples[index];
 	}
+
+	uint8_t bytepacker(int64_t index) override
+	{
+		return 0;
+	}
+
 };
 
 template <>
@@ -181,9 +222,9 @@ public:
 
 	ConvertPCM16() = delete;
 	ConvertPCM16(bool _usefir,
-				 std::vector<float> coef,
-				 uint64_t inSize,
-				 uint8_t *samples) : ConvertPCM16Data(_usefir, inSize, samples, 2, inSize >> 1, coef) {}
+		std::vector<float> coef,
+		uint64_t inSize,
+		uint8_t* samples, uint16_t channels) : ConvertPCM16Data(_usefir, inSize, samples, 2, inSize >> 1, channels, coef) {}
 
 	~ConvertPCM16() = default;
 
@@ -191,9 +232,7 @@ protected:
 
 	int16_t convertto16(int64_t index) override
 	{
-		int16_t lowerByte = (int16_t)inSamples[index];
-		int16_t topByte = ((int16_t)inSamples[index + 1]) << 8;
-		return (topByte | lowerByte);
+		return bytepacker(index);
 	}
 
 	int16_t convertto16(int16_t val) override
@@ -203,7 +242,14 @@ protected:
 
 	int16_t convertfirsample(int64_t index) override
 	{
-		return convertto16(index);
+		return bytepacker(index);
+	}
+
+	int16_t bytepacker(int64_t index) override
+	{
+		int16_t lowerByte = (int16_t)inSamples[index];
+		int16_t topByte = ((int16_t)inSamples[index + 1]) << 8;
+		return (topByte | lowerByte);
 	}
 };
 
@@ -217,17 +263,11 @@ public:
 	ConvertPCM16(bool _usefir,
 		std::vector<float> coef,
 		uint64_t inSize,
-		uint8_t* samples) : ConvertPCM16Data(_usefir, inSize, samples, 3, inSize / 3, coef) {}
+		uint8_t* samples, uint16_t channels) : ConvertPCM16Data(_usefir, inSize, samples, 3, inSize / 3, channels, coef) {}
 
 	~ConvertPCM16() = default;
 
 protected:
-
-	int16_t convertto16(int64_t index) override
-	{
-		PCM24 ret = bytepacker24(index);
-		return convertto16(ret);
-	}
 
 	int16_t convertto16(PCM24 val) override
 	{
@@ -240,14 +280,7 @@ protected:
 		return output;
 	}
 
-	PCM24 convertfirsample(int64_t index) override
-	{
-		return bytepacker24(index);
-	}
-
-private:
-
-	PCM24 bytepacker24(int64_t index)
+	PCM24 bytepacker(int64_t index) override
 	{
 		int32_t lowerByte = static_cast<int32_t>(inSamples[index]);
 		int32_t middleByte = static_cast<int32_t>(inSamples[index + 1]) << 8;
@@ -270,20 +303,15 @@ public:
 
 	ConvertPCM16() = delete;
 	ConvertPCM16(bool _usefir,
-				 std::vector<float> coef,
-				 uint32_t inSize,
-				 uint8_t *samples) : ConvertPCM16Data(_usefir, inSize, samples, 4, inSize >> 2, coef) {}
+		std::vector<float> coef,
+		uint64_t inSize,
+		uint8_t* samples, uint16_t channels) : ConvertPCM16Data(_usefir, inSize, samples, 4, inSize >> 2, channels, coef) {}
 
 	~ConvertPCM16() = default;
 
 protected:
 
-	int16_t convertto16(int64_t index) override
-	{
-		int32_t ret = bytepacker32(index);
-		return convertto16(ret);
-	}
-
+	
 	int16_t convertto16(int32_t val) override
 	{
 		constexpr uint32_t num = static_cast<uint32_t>(std::numeric_limits<int16_t>::max() - std::numeric_limits<int16_t>::min());
@@ -295,14 +323,7 @@ protected:
 		return output;
 	}
 
-	int32_t convertfirsample(int64_t index) override
-	{
-		return bytepacker32(index);
-	}
-
-private:
-
-	int32_t bytepacker32(int64_t index)
+	int32_t bytepacker(int64_t index) override
 	{
 		int32_t out = 0;
 		for (int i = 0; i < bytesPerSample; i++)
@@ -321,18 +342,13 @@ public:
 	ConvertPCM16() = delete;
 	ConvertPCM16(bool _usefir,
 		std::vector<float> coef,
-		uint32_t inSize,
-		uint8_t* samples) : ConvertPCM16Data(_usefir, inSize, samples, 4, inSize >> 2, coef) {}
+		uint64_t inSize,
+		uint8_t* samples, uint16_t channels) : ConvertPCM16Data(_usefir, inSize, samples, 4, inSize >> 2, channels, coef) {}
 
 	~ConvertPCM16() = default;
 
 protected:
 
-	int16_t convertto16(int64_t index) override
-	{
-		float ret = bytepacker32(index);
-		return convertto16(ret);
-	}
 
 	int16_t convertto16(float val) override
 	{
@@ -345,26 +361,19 @@ protected:
 		return output;
 	}
 
-	float convertfirsample(int64_t index) override
+	float bytepacker(int64_t index) override
 	{
-		return bytepacker32(index);
-	}
-
-private:
-
-	float bytepacker32(int64_t index)
-	{
-		union int2flt
+		union 
 		{
 			float val;
 			int32_t intVal;
-		};
+		} out{};
 
-		int2flt out{ 0 };
 		for (int i = 0; i < bytesPerSample; i++)
 		{
 			out.intVal |= static_cast<int32_t>(inSamples[index + i]) << (8 * i);
 		}
+
 		return out.val;
 	}
 };
@@ -377,18 +386,12 @@ public:
 	ConvertPCM16() = delete;
 	ConvertPCM16(bool _usefir,
 		std::vector<float> coef,
-		uint32_t inSize,
-		uint8_t* samples) : ConvertPCM16Data(_usefir, inSize, samples, 8, inSize >> 3, coef) {}
+		uint64_t inSize,
+		uint8_t* samples, uint16_t channels) : ConvertPCM16Data(_usefir, inSize, samples, 8, inSize >> 3, channels, coef) {}
 
 	~ConvertPCM16() = default;
 
 protected:
-
-	int16_t convertto16(int64_t index) override
-	{
-		double ret = bytepacker64(index);
-		return convertto16(ret);
-	}
 
 	int16_t convertto16(double val) override
 	{
@@ -399,22 +402,13 @@ protected:
 		return output;
 	}
 
-	double convertfirsample(int64_t index) override
+	double bytepacker(int64_t index) override
 	{
-		return bytepacker64(index);
-	}
-
-private:
-
-	double bytepacker64(int64_t index)
-	{
-		union int2dbl
+		union
 		{
 			double val;
 			int64_t intVal;
-		};
-
-		int2dbl out{ 0 };
+		} out{};
 		
 		for (int i = 0; i < bytesPerSample; i++)
 		{

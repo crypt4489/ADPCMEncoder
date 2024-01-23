@@ -47,6 +47,17 @@ public:
 		return PCM24(this->integerval / val.integerval);
 	}
 
+	PCM24 operator |(const PCM24& val) const
+	{
+		return PCM24(this->integerval | val.integerval);
+	}
+
+	PCM24 operator <<(const int shift) const
+	{
+		return PCM24(this->integerval << shift);
+	}
+
+
 	PCM24& operator=(int val)
 	{
 		assert(val <= INT24_MAX && val >= INT24_MIN);

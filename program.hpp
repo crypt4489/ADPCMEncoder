@@ -13,6 +13,7 @@
 
 #include "file.hpp"
 #include "wav.hpp"
+#include "aiff.hpp"
 #include "vag.hpp"
 #include "convertpcm16.hpp"
 
@@ -24,7 +25,8 @@ public:
     {
         UNKNOWNTYPE = 0,
         VAGTYPE = 1,
-        WAVTYPE = 2
+        WAVTYPE = 2,
+        AIFFTYPE = 3,
     };
 
     using ConversionType = std::variant<std::unique_ptr<ConvertPCM16<uint8_t>>, std::unique_ptr<ConvertPCM16<int16_t>>,
@@ -102,7 +104,10 @@ private:
     std::regex *filepathregex;
     const std::unordered_map<std::string, FileType> filetypemap
     {
-        { "wav", WAVTYPE }
+        { "wav", WAVTYPE },
+        { "aif", AIFFTYPE },
+        { "aiff", AIFFTYPE },
+        { "aifc", AIFFTYPE },
     };
 
     bool ParseArguments(int argc, char **argv)
@@ -267,6 +272,16 @@ private:
 
             break;
         }
+
+        case AIFFTYPE:
+        {
+            file = std::make_unique<AIFFFile>(GetFilePath());
+
+            if (!file)
+                throw std::runtime_error("Cannot create AIFF file");
+
+            break;
+        }
         default:
             throw std::runtime_error("Invalid file type");
         }
@@ -284,48 +299,48 @@ private:
         {
         case 8:
         {
-            conversion = std::make_unique<ConvertPCM16<uint8_t>>(noisereduce, coef, file->samplesSize, file->samples);
+            conversion = std::make_unique<ConvertPCM16<uint8_t>>(noisereduce, coef, file->samplesSize, file->samples, file->channels);
             break;
         }
         case 16:
         {
-            conversion = std::make_unique<ConvertPCM16<int16_t>>(noisereduce, coef, file->samplesSize, file->samples);
+            conversion = std::make_unique<ConvertPCM16<int16_t>>(noisereduce, coef, file->samplesSize, file->samples, file->channels);
             break;
         }
         case 24:
         {
-            conversion = std::make_unique<ConvertPCM16<PCM24>>(noisereduce, coef, file->samplesSize, file->samples);
+            conversion = std::make_unique<ConvertPCM16<PCM24>>(noisereduce, coef, file->samplesSize, file->samples, file->channels);
             break;
         }
         case 32:
         {
             if (file->isfloat)
-                conversion = std::make_unique<ConvertPCM16<float>>(noisereduce, coef, file->samplesSize, file->samples);
+                conversion = std::make_unique<ConvertPCM16<float>>(noisereduce, coef, file->samplesSize, file->samples, file->channels);
             else
-                conversion = std::make_unique<ConvertPCM16<int32_t>>(noisereduce, coef, file->samplesSize, file->samples);
+                conversion = std::make_unique<ConvertPCM16<int32_t>>(noisereduce, coef, file->samplesSize, file->samples, file->channels);
             break;
         }
         case 64:
         {
             if (file->isfloat)
-                conversion = std::make_unique<ConvertPCM16<double>>(noisereduce, coef, file->samplesSize, file->samples);
+                conversion = std::make_unique<ConvertPCM16<double>>(noisereduce, coef, file->samplesSize, file->samples, file->channels);
             break;
         }
         default:
             throw std::runtime_error("Unhandled bit rate or sample data type");
         }
 
-        std::tie(outsize, convertedsamplesptr) = std::visit([](auto& conv) {
+        std::visit([&convertedsamplesptr, &outsize](auto& conv) {
             if (!conv)
                 throw std::runtime_error("Conversion pointer not created");
-
-            return std::make_tuple<uint64_t, int16_t*>(conv->GetOutSize(), conv->convert());
+            
+            convertedsamplesptr = conv->convert();
+            outsize = conv->GetOutSize();
 
             }, conversion);
+        std::cout << outsize << std::endl;
 
-        std::cout << GetOutputFile() << std::endl;
-
-        std::unique_ptr<VagFile> vagFile(new (std::nothrow) VagFile(file->sampleRate, file->channels, GetOutputFile()));
+        std::unique_ptr<VagFile> vagFile(new (std::nothrow) VagFile(file->sampleRate, 1, GetOutputFile()));
 
         if (!vagFile)
             throw std::runtime_error("Cannot create vagfile object");

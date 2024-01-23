@@ -11,7 +11,10 @@ struct File
 	uint16_t channels{};
 	bool isfloat = false;
 	File() = default;
-	virtual ~File() = default;
+	virtual ~File() {
+		if (samples)
+			delete[] samples;
+	};
 
 	std::vector<uint8_t> LoadFile(std::string name)
 	{
