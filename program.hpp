@@ -286,9 +286,9 @@ private:
             throw std::runtime_error("Invalid file type");
         }
 
-        std::cout << file->samplesSize << " "
+        std::cout << file->samplessize << " "
             << file->channels << " "
-            << file->sampleRate << " " << file->bps << "\n";
+            << file->samplerate << " " << file->bps << "\n";
 
         int16_t* convertedsamplesptr{};
         uint64_t outsize{};
@@ -299,31 +299,31 @@ private:
         {
         case 8:
         {
-            conversion = std::make_unique<ConvertPCM16<uint8_t>>(noisereduce, coef, file->samplesSize, file->samples, file->channels);
+            conversion = std::make_unique<ConvertPCM16<uint8_t>>(noisereduce, coef, file->samplessize, file->samples, file->channels);
             break;
         }
         case 16:
         {
-            conversion = std::make_unique<ConvertPCM16<int16_t>>(noisereduce, coef, file->samplesSize, file->samples, file->channels);
+            conversion = std::make_unique<ConvertPCM16<int16_t>>(noisereduce, coef, file->samplessize, file->samples, file->channels);
             break;
         }
         case 24:
         {
-            conversion = std::make_unique<ConvertPCM16<PCM24>>(noisereduce, coef, file->samplesSize, file->samples, file->channels);
+            conversion = std::make_unique<ConvertPCM16<PCM24>>(noisereduce, coef, file->samplessize, file->samples, file->channels);
             break;
         }
         case 32:
         {
             if (file->isfloat)
-                conversion = std::make_unique<ConvertPCM16<float>>(noisereduce, coef, file->samplesSize, file->samples, file->channels);
+                conversion = std::make_unique<ConvertPCM16<float>>(noisereduce, coef, file->samplessize, file->samples, file->channels);
             else
-                conversion = std::make_unique<ConvertPCM16<int32_t>>(noisereduce, coef, file->samplesSize, file->samples, file->channels);
+                conversion = std::make_unique<ConvertPCM16<int32_t>>(noisereduce, coef, file->samplessize, file->samples, file->channels);
             break;
         }
         case 64:
         {
             if (file->isfloat)
-                conversion = std::make_unique<ConvertPCM16<double>>(noisereduce, coef, file->samplesSize, file->samples, file->channels);
+                conversion = std::make_unique<ConvertPCM16<double>>(noisereduce, coef, file->samplessize, file->samples, file->channels);
             break;
         }
         default:
@@ -340,7 +340,7 @@ private:
             }, conversion);
         std::cout << outsize << std::endl;
 
-        std::unique_ptr<VagFile> vagFile(new (std::nothrow) VagFile(file->sampleRate, 1, GetOutputFile()));
+        std::unique_ptr<VagFile> vagFile(new (std::nothrow) VagFile(file->samplerate, 1, GetOutputFile()));
 
         if (!vagFile)
             throw std::runtime_error("Cannot create vagfile object");

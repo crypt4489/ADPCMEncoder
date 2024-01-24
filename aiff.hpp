@@ -51,64 +51,64 @@ private:
 			if (chunkID == "FORM")
 			{
 				std::copy(buffer, buffer + 4, &form.FORM[0]);
-				form.formSize = convertBigEndian<uint32_t>(buffer+4);
+				form.formSize = ConvertBigEndian<uint32_t>(buffer+4);
 				std::copy(buffer+8, buffer + 12, &form.AIFF[0]);
 				stride = 12;
 			}
 			else if (chunkID == "COMM")
 			{
 				std::copy(buffer, buffer + 4, &common.COMM[0]);
-				common.size = convertBigEndian<uint32_t>(buffer+4);
-				common.channels = convertBigEndian<uint16_t>(buffer + 8);
-				common.numFrames = convertBigEndian<uint32_t>(buffer + 10);
-				common.bps = convertBigEndian<uint16_t>(buffer + 14);
+				common.size = ConvertBigEndian<uint32_t>(buffer+4);
+				common.channels = ConvertBigEndian<uint16_t>(buffer + 8);
+				common.numFrames = ConvertBigEndian<uint32_t>(buffer + 10);
+				common.bps = ConvertBigEndian<uint16_t>(buffer + 14);
 				common.sampleRate = convert80bitto32bit(buffer+16);
 				stride = common.size + 8;
 			}
 			else if (chunkID == "SSND")
 			{
-				samplesSize = snd.len= convertBigEndian<int32_t>(buffer + 4)-8;
-				samples = new (std::nothrow)uint8_t[samplesSize];
-				snd.offset = convertBigEndian<int32_t>(buffer + 8);
-				snd.blockSize = convertBigEndian<int32_t>(buffer + 12);
+				samplessize = snd.len = ConvertBigEndian<int32_t>(buffer + 4)-8;
+				samples = new (std::nothrow)uint8_t[samplessize];
+				snd.offset = ConvertBigEndian<int32_t>(buffer + 8);
+				snd.blockSize = ConvertBigEndian<int32_t>(buffer + 12);
 				switch (common.bps)
 				{
 				case 16:
-					swapsamples<int16_t>(buffer + 12, buffer + 12 + samplesSize);
+					SwapSamples<int16_t>(buffer + 12, buffer + 12 + samplessize);
 					break;
 				case 24:
-					swapsamples<PCM24>(buffer + 12, buffer + 12 + samplesSize);
+					SwapSamples<PCM24>(buffer + 12, buffer + 12 + samplessize);
 					break;
 				case 32:
-					swapsamples<int32_t>(buffer + 12, buffer + 12 + samplesSize);
+					SwapSamples<int32_t>(buffer + 12, buffer + 12 + samplessize);
 					break;
 				}
 				
-				std::copy(buffer + 12, buffer + 12 + samplesSize, samples);
-				stride = 16 + samplesSize;
+				std::copy(buffer + 12, buffer + 12 + samplessize, samples);
+				stride = 16 + samplessize;
 			}
 			else if (chunkID == "ANNO" || chunkID == "NAME" || chunkID == "AUTH" || chunkID == "(c) ")
 			{
 				//pstring
-				uint32_t skip = convertBigEndian<uint32_t>(buffer + 4);
+				uint32_t skip = ConvertBigEndian<uint32_t>(buffer + 4);
 				if (skip % 2) skip += 1;
 				stride = skip+8;
 			}
 			else 
 			{
-				uint32_t skip = convertBigEndian<uint32_t>(buffer + 4);
+				uint32_t skip = ConvertBigEndian<uint32_t>(buffer + 4);
 				stride = skip + 8;
 			}
 
 			buffer += stride;
 		}
 
-		sampleRate = common.sampleRate;
+		samplerate = common.sampleRate;
 		channels = common.channels;
 		bps = common.bps;
 	}
 
-	template<typename IntType> IntType convertBigEndian(std::vector<uint8_t>::iterator buffer)
+	template<typename IntType> IntType ConvertBigEndian(std::vector<uint8_t>::iterator buffer)
 	{
 		int stride;
 		if constexpr (std::is_same<IntType, PCM24>::value)
@@ -128,7 +128,7 @@ private:
 	unsigned long long convert80bitto32bit(std::vector<uint8_t>::iterator buffer)
 	{
 		uint8_t exp = 30 - *(buffer + 1);
-		unsigned long fraction = convertBigEndian<unsigned long>(buffer + 2);
+		unsigned long fraction = ConvertBigEndian<unsigned long>(buffer + 2);
 		unsigned long last = 0;
 		while(exp--)
 		{ 
@@ -141,7 +141,7 @@ private:
 		return fraction;
 	}
 
-	template <typename T_Sample> void swapsamples(std::vector<uint8_t>::iterator begin, std::vector<uint8_t>::iterator end)
+	template <typename T_Sample> void SwapSamples(std::vector<uint8_t>::iterator begin, std::vector<uint8_t>::iterator end)
 	{
 		int stride;
 		if constexpr (std::is_same<T_Sample, PCM24>::value)
@@ -154,7 +154,7 @@ private:
 		}
 		while (begin != end)
 		{
-			*reinterpret_cast<T_Sample*>(&(*begin)) = convertBigEndian<T_Sample>(begin);
+			*reinterpret_cast<T_Sample*>(&(*begin)) = ConvertBigEndian<T_Sample>(begin);
 			begin += stride;
 		}
 	}

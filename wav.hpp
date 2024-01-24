@@ -86,8 +86,8 @@ private:
         std::copy(buffer, buffer + dataSize, samples);
 
         channels = header.num_channels;
-        sampleRate = header.sample_rate;
-        samplesSize = dataSize;
+        samplerate = header.sample_rate;
+        samplessize = dataSize;
         bps = header.bits_per_sample;
 
         switch (header.audio_format)
@@ -100,10 +100,10 @@ private:
                 isfloat = true;
                 break;
             case ALaw:
-                a_law_decompression();
+                ALawDecompression();
                 break;
             case ULaw:
-                u_law_decompression();
+                ULawDecompression();
                 break;
             case Extensible:
                 break;

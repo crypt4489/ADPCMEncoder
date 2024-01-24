@@ -31,7 +31,7 @@ template <typename T_SampleType>
 class ConvertPCM16Data
 {
 public:
-	uint64_t GetOutSize() const { return outSize; }
+	uint64_t GetOutSize() const { return outsize; }
 
 	int16_t *convert()
 	{
@@ -58,21 +58,21 @@ protected:
 	FIR<FIRSIZE, T_SampleType> *fir = nullptr;
 	
 	bool usefir = false;
-	uint64_t sampleSize;
-	uint8_t *inSamples;
-	uint8_t bytesPerSample;
-	uint64_t outSize;
+	uint64_t samplesize;
+	uint8_t *insamples;
+	uint8_t bytespersample;
+	uint64_t outsize;
 	uint16_t channels;
 	std::vector<int16_t>outSamples;
 	std::vector<T_SampleType>convertSamples;
 
 	ConvertPCM16Data(bool _use, uint64_t inSize, uint8_t *samples, 
-	uint8_t bps, uint64_t _outSize, uint16_t channels, std::vector<float> coef) : 
+	uint8_t bps, uint64_t _outsize, uint16_t channels, std::vector<float> coef) : 
 	usefir(_use),												  
-	sampleSize(inSize),
-	inSamples(samples),
-	bytesPerSample(bps),
-	outSize(_outSize),
+	samplesize(inSize),
+	insamples(samples),
+	bytespersample(bps),
+	outsize(_outsize),
 	channels(channels)
 
 	{
@@ -90,18 +90,18 @@ protected:
 	int16_t *convertwithfir()
 	{
 		
-		for (int64_t i = (FIRSIZE-2) * bytesPerSample; i >= 0; i -= bytesPerSample)
+		for (int64_t i = (FIRSIZE-2) * bytespersample; i >= 0; i -= bytespersample)
 		{
 			outSamples.push_back(convertto16(i));
 		}
 
-		for (uint64_t i = (FIRSIZE-1) * bytesPerSample; i < sampleSize - 1; i += bytesPerSample)
+		for (uint64_t i = (FIRSIZE-1) * bytespersample; i < samplesize - 1; i += bytespersample)
 		{
 			T_SampleType sample = 0;
 
-			for (int j = (FIRSIZE - 1) * bytesPerSample; j >= 0; j -= bytesPerSample)
+			for (int j = (FIRSIZE - 1) * bytespersample; j >= 0; j -= bytespersample)
 			{
-				sample += fir->CalculateNthSample(convertfirsample(i - j), j / bytesPerSample);
+				sample += fir->CalculateNthSample(convertfirsample(i - j), j / bytespersample);
 			}
 			
 			outSamples.push_back(convertto16(sample));
@@ -117,9 +117,9 @@ protected:
 
 	int16_t *convertwithoutfir()
 	{
-		uint64_t outIndex = outSize - 1;
+		uint64_t outIndex = outsize - 1;
 
-		for (int64_t i = sampleSize - bytesPerSample; i >= 0; i -= bytesPerSample)
+		for (int64_t i = samplesize - bytespersample; i >= 0; i -= bytespersample)
 		{
 			outSamples.push_back (convertto16(i));
 		}
@@ -135,11 +135,11 @@ protected:
 	void resample()
 	{
 		std::vector<int16_t> resampled;
-		for (int i = 0; i < outSize; i += 2)
+		for (int i = 0; i < outsize; i += 2)
 		{
 			resampled.push_back((outSamples[i] + outSamples[i + 1]) / 2);
 		}
-		outSize = resampled.size();
+		outsize = resampled.size();
 		outSamples.swap(resampled);
 	}
 
@@ -195,7 +195,7 @@ protected:
 
 	int16_t convertto16(int64_t index) override
 	{
-		return static_cast<int16_t>(inSamples[index] - 0x80) << 8;
+		return static_cast<int16_t>(insamples[index] - 0x80) << 8;
 	}
 
 	int16_t convertto16(uint8_t val) override
@@ -205,7 +205,7 @@ protected:
 
 	uint8_t convertfirsample(int64_t index) override
 	{
-		return inSamples[index];
+		return insamples[index];
 	}
 
 	uint8_t bytepacker(int64_t index) override
@@ -247,8 +247,8 @@ protected:
 
 	int16_t bytepacker(int64_t index) override
 	{
-		int16_t lowerByte = (int16_t)inSamples[index];
-		int16_t topByte = ((int16_t)inSamples[index + 1]) << 8;
+		int16_t lowerByte = (int16_t)insamples[index];
+		int16_t topByte = ((int16_t)insamples[index + 1]) << 8;
 		return (topByte | lowerByte);
 	}
 };
@@ -282,9 +282,9 @@ protected:
 
 	PCM24 bytepacker(int64_t index) override
 	{
-		int32_t lowerByte = static_cast<int32_t>(inSamples[index]);
-		int32_t middleByte = static_cast<int32_t>(inSamples[index + 1]) << 8;
-		int32_t topByte = static_cast<int32_t>(inSamples[index + 2]) << 16;
+		int32_t lowerByte = static_cast<int32_t>(insamples[index]);
+		int32_t middleByte = static_cast<int32_t>(insamples[index + 1]) << 8;
+		int32_t topByte = static_cast<int32_t>(insamples[index + 2]) << 16;
 		int32_t excess = 0;
 		
 		if (topByte & 0x00800000)
@@ -326,9 +326,9 @@ protected:
 	int32_t bytepacker(int64_t index) override
 	{
 		int32_t out = 0;
-		for (int i = 0; i < bytesPerSample; i++)
+		for (int i = 0; i < bytespersample; i++)
 		{
-			out |= static_cast<int32_t>(inSamples[index + i]) << (8 * i);
+			out |= static_cast<int32_t>(insamples[index + i]) << (8 * i);
 		}
 		return out;
 	}
@@ -369,9 +369,9 @@ protected:
 			int32_t intVal;
 		} out{};
 
-		for (int i = 0; i < bytesPerSample; i++)
+		for (int i = 0; i < bytespersample; i++)
 		{
-			out.intVal |= static_cast<int32_t>(inSamples[index + i]) << (8 * i);
+			out.intVal |= static_cast<int32_t>(insamples[index + i]) << (8 * i);
 		}
 
 		return out.val;
@@ -410,9 +410,9 @@ protected:
 			int64_t intVal;
 		} out{};
 		
-		for (int i = 0; i < bytesPerSample; i++)
+		for (int i = 0; i < bytespersample; i++)
 		{
-			out.intVal |= static_cast<int64_t>(inSamples[index + i]) << (8 * i);
+			out.intVal |= static_cast<int64_t>(insamples[index + i]) << (8 * i);
 		}
 
 		return out.val;

@@ -7,7 +7,7 @@
 struct File
 {
 	uint8_t* samples{};
-	uint32_t sampleRate{}, samplesSize{}, bps{};
+	uint32_t samplerate{}, samplessize{}, bps{};
 	uint16_t channels{};
 	bool isfloat = false;
 	File() = default;
@@ -21,7 +21,7 @@ struct File
 		std::ifstream filehandle(name, std::ios::binary | std::ios::ate);
 
 		if (!filehandle.is_open())
-			throw std::runtime_error("WAV file is unable to be opened");
+			throw std::runtime_error("File is unable to be opened");
 
 		filehandle.seekg(0, std::ios_base::end);
 
@@ -38,16 +38,16 @@ struct File
 		return filedata;
 	}
 
-	void u_law_decompression()
+	void ULawDecompression()
 	{
-		int16_t* decompressed = new (std::nothrow) int16_t[samplesSize];
+		int16_t* decompressed = new (std::nothrow) int16_t[samplessize];
 		if (!decompressed)
 		{
 			std::cerr << "cannot allocate decompressed u_law samples\n";
 			throw std::bad_alloc();
 		}
 
-		for (unsigned i = 0; i < samplesSize; i++)
+		for (unsigned i = 0; i < samplessize; i++)
 		{
 			constexpr uint16_t BIAS = 33;
 
@@ -75,20 +75,20 @@ struct File
 
 		delete[] samples;
 		samples = (uint8_t*)decompressed;
-		samplesSize *= 2;
+		samplessize *= 2;
 		bps = 16;
 	}
 
-	void a_law_decompression()
+	void ALawDecompression()
 	{
-		int16_t* decompressed = new (std::nothrow) int16_t[samplesSize];
+		int16_t* decompressed = new (std::nothrow) int16_t[samplessize];
 		if (!decompressed)
 		{
 			std::cerr << "cannot allocate decompressed a_law samples\n";
 			throw std::bad_alloc();
 		}
 
-		for (unsigned i = 0; i < samplesSize; i++)
+		for (unsigned i = 0; i < samplessize; i++)
 		{
 			uint8_t input = 0x55 ^ samples[i];
 			bool sign = false;
@@ -116,7 +116,7 @@ struct File
 
 		delete[] samples;
 		samples = (uint8_t*)decompressed;
-		samplesSize *= 2;
+		samplessize *= 2;
 		bps = 16;
 	}
 };
