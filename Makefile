@@ -17,12 +17,12 @@ cxx := g++
 cppflags := -std=c++17 -Wall
 
 ifeq ($(build_type), RELEASE)
-    cppflags += -O3
+	cppflags += -O3
 endif
 
 # Build rule for object files
 $(objs_dir)/%.o: %.cpp
-    $(cxx) $(cppflags) $(incflags) -c -o $@ $^
+	$(cxx) $(cppflags) $(incflags) -c -o $@ $^
 
 .PHONY : all clean compile directories
 
@@ -30,14 +30,14 @@ $(objs_dir)/%.o: %.cpp
 all: directories compile
 
 compile:
-    make $(target)
+	make $(target)
 
 directories:
-    if [ ! -d $(objs_dir) ]; then mkdir -p $(objs_dir) ; fi
+	if [ ! -d $(objs_dir) ]; then mkdir -p $(objs_dir) ; fi
 
 $(target): $(objs)
-    $(cxx) -o $@ $^
+	$(cxx) -o $@ $^
 
 # Clean rule
 clean:
-    rm -rf $(objs) $(target) $(objs_dir)/*.o
+	rm -rf $(objs) $(target) $(objs_dir)/*.o

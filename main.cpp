@@ -3,8 +3,8 @@ int main(int argc, char **argv)
 {
 	try
 	{
-		Program *program = new Program(argc, argv);
-		program->Execute();
+		Program program(argc, argv);
+		program.Execute();
 		return 0;
 	}
 	catch (const std::exception &e)
