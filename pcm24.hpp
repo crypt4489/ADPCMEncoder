@@ -7,7 +7,7 @@ class PCM24
 public:
 	static constexpr int32_t INT24_MIN = -8388608;
 	static constexpr int32_t INT24_MAX = 8388607;
-	int32_t integerval;
+	
 	
 	PCM24() = default;
 
@@ -99,5 +99,6 @@ public:
 	{
 		return PCM24(rhs.integerval * val);
 	}
-
+private:
+	int32_t integerval;
 };

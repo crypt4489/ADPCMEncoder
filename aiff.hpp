@@ -111,7 +111,7 @@ private:
 	template<typename IntType> IntType ConvertBigEndian(std::vector<uint8_t>::iterator buffer)
 	{
 		int stride;
-		if constexpr (std::is_same<IntType, PCM24>::value)
+		if constexpr (std::is_same_v<IntType, PCM24>)
 		{
 			stride = 3;
 		} 
@@ -144,7 +144,7 @@ private:
 	template <typename T_Sample> void SwapSamples(std::vector<uint8_t>::iterator begin, std::vector<uint8_t>::iterator end)
 	{
 		int stride;
-		if constexpr (std::is_same<T_Sample, PCM24>::value)
+		if constexpr (std::is_same_v<T_Sample, PCM24>)
 		{
 			stride = 3;
 		}
