@@ -340,12 +340,12 @@ private:
             }, conversion);
         std::cout << outsize << std::endl;
 
-        std::unique_ptr<VagFile> vagFile(new (std::nothrow) VagFile(file->samplerate, 1, GetOutputFile()));
+        std::unique_ptr<VagFile> vagFile(new (std::nothrow) VagFile(file->samplerate, file->channels, GetOutputFile()));
 
         if (!vagFile)
             throw std::runtime_error("Cannot create vagfile object");
 
-        vagFile->CreateVagSamples(convertedsamplesptr, outsize, 0, 0, false);
+        vagFile->CreateVagSamples(convertedsamplesptr, outsize, 0, 0, false, file->channels);
 
         vagFile->WriteVagFile();
     }

@@ -107,11 +107,6 @@ protected:
 			outSamples.push_back(convertto16(sample));
 		}
 
-		if (channels == 2)
-		{
-			resample();
-		}
-
 		return outSamples.data();
 	}
 
@@ -122,11 +117,6 @@ protected:
 		for (int64_t i = samplesize - bytespersample; i >= 0; i -= bytespersample)
 		{
 			outSamples.push_back (convertto16(i));
-		}
-
-		if (channels == 2)
-		{
-			resample();
 		}
 
 		return outSamples.data();

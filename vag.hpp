@@ -89,13 +89,13 @@ struct vagfile_holder_t
         stream.close();
     }
 
-    void CreateVagSamples(int16_t *insamples, uint64_t len, uint32_t loopStart, uint32_t loopEnd, bool loopFlag)
+    void CreateVagSamples(int16_t *insamples, uint64_t len, uint32_t loopStart, uint32_t loopEnd, bool loopFlag, uint32_t channels)
     {
         float _hist_1 = 0.0, _hist_2 = 0.0;
         float hist_1 = 0.0, hist_2 = 0.0;
 
-        int fullChunks = static_cast<int>(len * 0.035714);
-        int remaining = len - (fullChunks * 28);
+        int fullChunks = static_cast<int>(len / 28);
+        int remaining = (fullChunks % 28);
         constexpr uint32_t sizeOfWrite = 16;
         if (remaining)
         {
